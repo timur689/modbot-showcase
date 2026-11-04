@@ -136,7 +136,7 @@
   <script>
     (() => {
       "use strict";
-      const CHECK_EVERY_MS = 10_000, TIMEOUT_MS = 5_000, SPLASH_MS = 1_200;
+      const CHECK_EVERY_MS = 10_000, TIMEOUT_MS = 5_000, SPLASH_MS = 1_200, FULLSCREEN_WAIT_MS = 1_500;
       const tg = window.Telegram && window.Telegram.WebApp;
       const panel = new URLSearchParams(location.search).get("panel");
       const statusBox = document.getElementById("status"), statusText = document.getElementById("status-text");
@@ -145,9 +145,6 @@
       if (tg) {
         tg.ready();
         tg.expand();
-        // Full screen is asked for here, by the page Telegram opened: after the hop to the panel (another site)
-        // Telegram Desktop no longer grants it, but a window already full screen stays so (Bot API 8.0).
-        if (tg.isVersionAtLeast && tg.isVersionAtLeast("8.0") && !tg.isFullscreen) tg.requestFullscreen();
         if (tg.colorScheme) document.documentElement.dataset.theme = tg.colorScheme;
       }
 
@@ -163,6 +160,17 @@
       }
 
       const target = panel && safePanel(panel);
+
+      // Full screen is asked for here, by the page Telegram opened: after the hop to the panel (another site)
+      // Telegram no longer grants it, but a window already full screen stays so (Bot API 8.0). The hop waits
+      // for Telegram's answer, or the window would leave before it got wide.
+      const fullScreen = new Promise((resolve) => {
+        if (!tg || !tg.isVersionAtLeast || !tg.isVersionAtLeast("8.0") || tg.isFullscreen) return resolve();
+        setTimeout(resolve, FULLSCREEN_WAIT_MS); // no answer at all: go on anyway
+        tg.onEvent("fullscreenChanged", resolve);
+        tg.onEvent("fullscreenFailed", resolve);
+        tg.requestFullscreen();
+      });
 
       async function alive() {
         if (!target) return false;
@@ -227,9 +235,10 @@
       }
 
       // Telegram passes who opened it in the address's #fragment: the panel needs it too.
-      function open() {
+      async function open() {
         statusBox.classList.add("up");
         statusText.textContent = "Бот проснулся! Открываю…";
+        await fullScreen;
         location.replace(`${target}/${location.hash}`);
       }
 
