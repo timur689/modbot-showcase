@@ -145,6 +145,9 @@
       if (tg) {
         tg.ready();
         tg.expand();
+        // Full screen is asked for here, by the page Telegram opened: after the hop to the panel (another site)
+        // Telegram Desktop no longer grants it, but a window already full screen stays so (Bot API 8.0).
+        if (tg.isVersionAtLeast && tg.isVersionAtLeast("8.0") && !tg.isFullscreen) tg.requestFullscreen();
         if (tg.colorScheme) document.documentElement.dataset.theme = tg.colorScheme;
       }
 
