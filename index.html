@@ -74,7 +74,8 @@
       animation: caustics 7s ease-in-out infinite alternate; }
     .ray { position: absolute; top: 0; width: 46px; height: 260px; background: linear-gradient(180deg, rgba(255, 250, 220, 0.28), transparent 80%); transform: skewX(-14deg); animation: shimmer 6s ease-in-out infinite; }
     .ray.r1 { left: 22%; } .ray.r2 { left: 52%; width: 30px; animation-delay: -2s; }
-    .sand { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; z-index: 3; background: var(--sand); border-radius: 50% 50% 0 0 / 34% 34% 0 0; }
+    .sand { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; z-index: 3; overflow: hidden; border-radius: 50% 50% 0 0 / 34% 34% 0 0;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--sand) 85%, #fff) 0%, var(--sand) 45%, color-mix(in srgb, var(--sand) 80%, #6b4f2a) 100%); }
     .sand i { position: absolute; border-radius: 50%; }
     .deco { position: absolute; z-index: 2; }
     .weed { bottom: 26px; width: 40px; height: 120px; transform-origin: 50% 100%; animation: sway 4s ease-in-out infinite; }
@@ -103,10 +104,12 @@
     .bubble { position: absolute; bottom: 34px; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.75); animation: bubble 4.5s ease-in infinite; opacity: 0; z-index: 3; }
 
     /* ---- more life (built by grow() below): thick plants, duckweed, a crab, a shrimp, a puffer, drifting specks ---- */
-    .plant { position: absolute; bottom: 26px; z-index: 2; transform-origin: 50% 100%; animation: sway var(--sway, 4s) ease-in-out infinite; animation-delay: var(--delay, 0s); }
-    .plant.front { z-index: 4; bottom: 18px; }
-    .plant path { fill: none; stroke-linecap: round; }
-    .leafy path { stroke: none; }
+    .plant { position: absolute; bottom: 24px; z-index: 2; transform-origin: 50% 100%; animation: bend var(--sway, 5s) ease-in-out infinite; animation-delay: var(--delay, 0s); }
+    .plant.carpet { bottom: 12px; animation-name: sway; }
+    .rocks, .driftwood { pointer-events: none; }
+    .plant.front { z-index: 4; bottom: 16px; }
+    .plant path { stroke-linecap: round; }
+    .plant:not(.front) { filter: saturate(0.85) brightness(0.9); } /* the back row sits deeper in the water */
     .moss { position: absolute; bottom: 30px; z-index: 4; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #7fd06a, #2f7d3a); box-shadow: inset -3px -3px 6px rgba(0, 0, 0, 0.25); animation: breathe 5s ease-in-out infinite; }
     .duckweed { position: absolute; top: 12px; z-index: 5; width: 22px; height: 40px; animation: drift 9s ease-in-out infinite alternate; }
     .speck { position: absolute; z-index: 3; width: 3px; height: 3px; border-radius: 50%; background: rgba(255, 255, 255, 0.55); animation: speck var(--t, 14s) linear infinite; animation-delay: var(--d, 0s); }
@@ -149,6 +152,7 @@
     @keyframes shimmer { 50% { opacity: 0.35; transform: skewX(-10deg) translateX(10px); } }
     @keyframes sway { 50% { transform: rotate(7deg); } }
     @keyframes swim { from { transform: translateX(0); } to { transform: translateX(470px); } }
+    @keyframes bend { 0%, 100% { transform: skewX(0deg); } 35% { transform: skewX(5deg); } 70% { transform: skewX(-4deg); } }
     @keyframes breathe { 50% { transform: scale(1.05); } }
     @keyframes drift { to { transform: translateX(30px) rotate(6deg); } }
     @keyframes speck { from { transform: translate(0, 0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } to { transform: translate(60px, -40px); opacity: 0; } }
@@ -196,8 +200,6 @@
       <div class="tank">
         <div class="caustics"></div>
         <span class="ray r1"></span><span class="ray r2"></span>
-        <svg class="deco weed" style="left:18px" viewBox="0 0 40 110"><path d="M20 110 C6 86 32 70 18 46 C8 28 26 16 20 2"/><path d="M24 110 C34 90 14 78 28 56"/></svg>
-        <svg class="deco weed w2" style="right:8px" viewBox="0 0 40 110"><path d="M20 110 C30 88 8 72 22 48 C30 32 14 20 20 6"/><path d="M16 110 C8 92 22 80 12 64"/></svg>
         <svg class="deco coral" viewBox="0 0 54 62"><g fill="none" stroke="#ff7aa2" stroke-width="6" stroke-linecap="round"><path d="M27 62 V30 M27 40 L14 26 V12 M27 34 L40 20 V8 M14 26 L6 20 M40 20 L48 16"/></g><g fill="#ff9dbb"><circle cx="14" cy="10" r="4"/><circle cx="40" cy="6" r="4"/><circle cx="6" cy="18" r="3"/><circle cx="48" cy="14" r="3"/></g></svg>
         <svg class="deco castle" viewBox="0 0 66 80"><path class="flag" d="M33 2 L33 0 L46 5 L33 10 Z" fill="#ff5d6c"/><path d="M33 2 V16" stroke="#7d6b55" stroke-width="2"/><g fill="#d9c7a7" stroke="#b8a283" stroke-width="1.5"><path d="M6 80 V36 H18 V30 H22 V36 H26 V22 H40 V36 H44 V30 H48 V36 H60 V80 Z"/><path d="M22 22 H44 V16 H22 Z"/></g><path d="M27 80 V64 a6 6 0 0 1 12 0 V80 Z" fill="#5b4a3a"/><g fill="#7a8fa3"><rect x="12" y="46" width="6" height="8" rx="3"/><rect x="48" y="46" width="6" height="8" rx="3"/><rect x="30" y="30" width="6" height="8" rx="3"/></g></svg>
         <svg class="deco chest" viewBox="0 0 46 36"><rect x="4" y="16" width="38" height="18" rx="3" fill="#a8693a" stroke="#6f4322" stroke-width="2"/><rect x="20" y="20" width="6" height="7" rx="1" fill="#e0b14a"/><g class="chest-lid"><path d="M4 16 Q23 2 42 16 Z" fill="#c07c47" stroke="#6f4322" stroke-width="2"/></g><g fill="#ffd95e"><circle cx="14" cy="15" r="2.4"/><circle cx="31" cy="14" r="2.4"/></g></svg>
@@ -283,56 +285,150 @@
         }
       }
 
-      // A thicket along the bottom, duckweed on top and specks drifting in the water — a little different each visit.
+      // The tank's life, grown anew each visit: real aquarium plants (vallisneria ribbons, stem plants, sword plants,
+      // ferns, a carpet in front), a bottom of rippled sand with pebbles, rocks, driftwood and shells, duckweed on top
+      // and specks drifting in the water.
       function grow() {
         const tank = document.querySelector(".tank"), SVG = "http://www.w3.org/2000/svg";
-        const greens = ["#3fa66b", "#2f8a57", "#5cc36f", "#4bb07a", "#78c850", "#2c7a4b"];
+        const rand = (min, max) => min + Math.random() * (max - min);
         const pick = (list) => list[Math.floor(Math.random() * list.length)];
-        const make = (tag, attrs) => {
+        let ids = 0;
+        const make = (tag, attrs = {}) => {
           const node = document.createElementNS(SVG, tag);
-          Object.entries(attrs).forEach(([name, value]) => node.setAttribute(name, value));
+          Object.entries(attrs).forEach(([name, value]) => node.setAttribute(name, String(value)));
           return node;
         };
-        const plant = (left, height, front) => {
-          const svg = make("svg", { viewBox: "0 0 40 120", class: `plant${front ? " front" : ""}`, preserveAspectRatio: "none" });
-          svg.style.cssText = `left:${left}%; width:${18 + Math.random() * 22}px; height:${height}px; --sway:${3 + Math.random() * 3}s; --delay:${-Math.random() * 4}s`;
-          const blades = 2 + Math.floor(Math.random() * 3);
-          for (let k = 0; k < blades; k += 1) {
-            const x = 8 + Math.random() * 24, bend = (Math.random() - 0.5) * 30, top = 4 + Math.random() * 40;
-            svg.append(make("path", { d: `M${x} 120 C${x + bend} 90 ${x - bend} ${60} ${x + bend / 2} ${top}`, stroke: pick(greens), "stroke-width": String(3 + Math.random() * 4) }));
-          }
+        const art = (cls, w, h, style) => {
+          const svg = make("svg", { viewBox: `0 0 ${w} ${h}`, class: cls, preserveAspectRatio: "xMidYMax meet" });
+          svg.style.cssText = style;
           return svg;
         };
-        const leafy = (left) => {
-          const svg = make("svg", { viewBox: "0 0 50 60", class: "plant leafy front" });
-          svg.style.cssText = `left:${left}%; width:44px; height:52px; --sway:${4 + Math.random() * 2}s; --delay:${-Math.random() * 3}s`;
-          [[25, 60, -35], [25, 60, 0], [25, 60, 35], [25, 60, -60], [25, 60, 60]].forEach(([x, y, angle]) => {
-            const leaf = make("path", { d: `M${x} ${y} Q${x - 10} ${y - 30} ${x} ${y - 52} Q${x + 10} ${y - 30} ${x} ${y}`, fill: pick(greens), transform: `rotate(${angle} ${x} ${y})` });
-            svg.append(leaf);
+        const gradient = (svg, dark, light) => { // darker at the root, lighter towards the light
+          const id = `g${(ids += 1)}`, g = make("linearGradient", { id, x1: 0, y1: 1, x2: 0, y2: 0 });
+          g.append(make("stop", { offset: "0", "stop-color": dark }), make("stop", { offset: "1", "stop-color": light }));
+          const defs = make("defs");
+          defs.append(g);
+          svg.append(defs);
+          return `url(#${id})`;
+        };
+        const sway = (svg, front) => {
+          svg.style.setProperty("--sway", `${rand(3.5, 6.5)}s`);
+          svg.style.setProperty("--delay", `${-rand(0, 6)}s`);
+          if (front) svg.classList.add("front");
+        };
+        // A long ribbon leaf from (x, h) up, tapering, bending as it goes.
+        const ribbon = (x, h, top, width, bend) =>
+          `M${x - width} ${h} C${x - width + bend} ${h * 0.6} ${x + bend * 1.4} ${top + 30} ${x + bend} ${top} ` +
+          `C${x + bend * 1.2 + 2} ${top + 30} ${x + width + bend * 0.8} ${h * 0.6} ${x + width} ${h} Z`;
+
+        const PLANTS = {
+          vallisneria(left, height, front) {
+            const svg = art("plant", 50, 160, `left:${left}%; width:${rand(34, 48)}px; height:${height}px`);
+            const fill = gradient(svg, "#2e7d3e", "#8fd36a");
+            for (let k = 0; k < 6; k += 1) {
+              svg.append(make("path", { d: ribbon(rand(14, 36), 160, rand(4, 60), rand(1.6, 2.8), rand(-16, 16)), fill, opacity: rand(0.75, 1) }));
+            }
+            sway(svg, front);
+            return svg;
+          },
+          stem(left, height, front) {
+            const svg = art("plant", 40, 160, `left:${left}%; width:${rand(26, 34)}px; height:${height}px`);
+            const greens = ["#4caf50", "#6cc04a", "#3d9b47"];
+            for (let s = 0; s < 2; s += 1) {
+              const x = rand(12, 28), top = rand(10, 40);
+              svg.append(make("path", { d: `M${x} 160 Q${x + rand(-6, 6)} 90 ${x + rand(-4, 4)} ${top}`, stroke: "#2f7a3c", "stroke-width": 1.6, fill: "none" }));
+              for (let y = 150; y > top; y -= 12) { // whorls of small leaves up the stem
+                const leaf = pick(greens);
+                svg.append(make("ellipse", { cx: x - 6, cy: y, rx: 6, ry: 2.2, fill: leaf, transform: `rotate(-24 ${x - 6} ${y})` }));
+                svg.append(make("ellipse", { cx: x + 6, cy: y - 3, rx: 6, ry: 2.2, fill: leaf, transform: `rotate(24 ${x + 6} ${y - 3})` }));
+              }
+            }
+            sway(svg, front);
+            return svg;
+          },
+          sword(left) {
+            const svg = art("plant front", 60, 70, `left:${left}%; width:40px; height:${rand(38, 48)}px`);
+            const fill = gradient(svg, "#2f8a3e", "#7ccc5c");
+            const leaves = [-62, -38, -14, 10, 34, 58];
+            leaves.forEach((angle) => {
+              const leaf = make("path", { d: "M30 70 C18 48 20 18 30 4 C40 18 42 48 30 70 Z", fill, transform: `rotate(${angle} 30 70)` });
+              svg.append(leaf, make("path", { d: "M30 68 L30 10", stroke: "rgba(255,255,255,0.35)", "stroke-width": 0.8, transform: `rotate(${angle} 30 70)` }));
+            });
+            sway(svg, true);
+            return svg;
+          },
+          fern(left) {
+            const svg = art("plant", 50, 80, `left:${left}%; width:44px; height:${rand(56, 72)}px`);
+            const fill = gradient(svg, "#1f5a2e", "#4f9a4a");
+            [-40, -18, 6, 28].forEach((angle) => svg.append(make("path", {
+              d: "M25 80 C14 60 12 34 22 8 C26 20 22 28 28 34 C24 44 34 52 26 62 C32 70 28 76 25 80 Z", fill, transform: `rotate(${angle} 25 80)`,
+            })));
+            sway(svg, false);
+            return svg;
+          },
+          carpet(left) {
+            const svg = art("plant front carpet", 60, 22, `left:${left}%; width:${rand(46, 70)}px; height:${rand(14, 20)}px`);
+            for (let k = 0; k < 18; k += 1) {
+              const x = rand(2, 58), h = rand(6, 20);
+              svg.append(make("path", { d: `M${x} 22 Q${x + rand(-3, 3)} ${22 - h / 2} ${x + rand(-4, 4)} ${22 - h}`, stroke: pick(["#5cc36f", "#78c850", "#4bb07a"]), "stroke-width": 1.6, fill: "none" }));
+            }
+            sway(svg, true);
+            return svg;
+          },
+        };
+
+        // the bottom first: rippled sand with pebbles, rocks, driftwood and shells
+        const sand = tank.querySelector(".sand");
+        const ripples = art("ripples", 100, 40, "position:absolute; inset:0; width:100%; height:100%");
+        ripples.setAttribute("preserveAspectRatio", "none");
+        for (let y = 12; y < 40; y += 7) ripples.append(make("path", { d: `M0 ${y} Q25 ${y - 3} 50 ${y} T100 ${y}`, stroke: "rgba(150,110,50,0.18)", "stroke-width": 0.8, fill: "none" }));
+        sand.append(ripples);
+        for (let k = 0; k < 34; k += 1) {
+          const pebble = document.createElement("i");
+          const size = rand(3, 9);
+          pebble.style.cssText = `left:${rand(1, 97)}%; top:${rand(8, 34)}px; width:${size}px; height:${size * rand(0.55, 0.8)}px; background:${pick(["#c7a26a", "#9aa3ad", "#b6bdc6", "#d48a8a", "#8a7f72", "#e8dcc4", "#6d7682"])}`;
+          sand.append(pebble);
+        }
+        const rocks = art("deco rocks", 120, 50, "left:52%; bottom:18px; width:110px; height:46px; z-index:3");
+        [["M6 50 L14 22 L36 10 L54 20 L60 50 Z", "#8b939c"], ["M44 50 L56 26 L78 18 L96 30 L102 50 Z", "#a3abb4"], ["M86 50 L94 36 L110 32 L118 50 Z", "#7c848d"]]
+          .forEach(([d, fill]) => rocks.append(make("path", { d, fill, stroke: "rgba(0,0,0,0.12)", "stroke-width": 1, "stroke-linejoin": "round" })));
+        rocks.append(make("path", { d: "M18 24 L34 14 M60 28 L76 21", stroke: "rgba(255,255,255,0.45)", "stroke-width": 2, "stroke-linecap": "round" }));
+        tank.append(rocks);
+        const wood = art("deco driftwood", 140, 60, "left:2%; bottom:22px; width:130px; height:56px; z-index:3");
+        wood.append(make("path", { d: "M4 56 C30 50 46 40 62 22 C68 14 76 8 84 4 M62 22 C80 26 96 22 112 12 M40 46 C52 46 60 52 70 58", stroke: "#7a5232", "stroke-width": 7, "stroke-linecap": "round", fill: "none" }));
+        wood.append(make("path", { d: "M4 56 C30 50 46 40 62 22 C68 14 76 8 84 4", stroke: "#9b6d45", "stroke-width": 2.5, "stroke-linecap": "round", fill: "none" }));
+        tank.append(wood);
+        [[26, "M0 8 Q6 -4 12 8 Z", "#f3d9c4"], [74, "M0 8 C2 0 10 0 12 8 C8 6 4 6 0 8 Z", "#f6c6a8"], [90, "M6 0 C12 2 12 8 6 9 C1 8 2 3 6 4 C8 5 7 7 6 7", "#ead1b6"]]
+          .forEach(([left, d, fill]) => {
+            const shell = art("deco shell", 12, 10, `left:${left}%; bottom:10px; width:16px; height:13px; z-index:5`);
+            shell.append(make("path", { d, fill, stroke: "#c9a27a", "stroke-width": 0.8 }));
+            tank.append(shell);
           });
-          return svg;
-        };
-        for (let left = -2; left < 100; left += 6 + Math.random() * 6) tank.append(plant(left, 50 + Math.random() * 110, false));
-        for (let left = 2; left < 100; left += 14 + Math.random() * 10) tank.append(plant(left, 26 + Math.random() * 30, true));
-        [6, 46, 88].forEach((left) => tank.append(leafy(left + Math.random() * 4)));
-        [[24, 18], [80, 14], [66, 11]].forEach(([left, size]) => {
+
+        // then the plants: a back row of tall ones, a middle of stems and swords, a carpet in front
+        for (let left = -3; left < 100; left += rand(7, 12)) {
+          tank.append(PLANTS[Math.random() < 0.7 ? "vallisneria" : "stem"](left, rand(110, 200), false));
+        }
+        [rand(14, 20), rand(78, 86)].forEach((left) => tank.append(PLANTS.fern(left)));
+        [rand(24, 28), rand(88, 92)].forEach((left) => tank.append(PLANTS.sword(left)));
+        for (let left = -2; left < 100; left += rand(11, 18)) tank.append(PLANTS.carpet(left));
+        [[24, 16], [82, 13], [60, 10]].forEach(([left, size]) => {
           const moss = document.createElement("span");
           moss.className = "moss";
-          moss.style.cssText = `left:${left}%; width:${size}px; height:${size}px; animation-delay:${-Math.random() * 5}s`;
+          moss.style.cssText = `left:${left}%; width:${size}px; height:${size}px; animation-delay:${-rand(0, 5)}s`;
           tank.append(moss);
         });
+
         [8, 30, 70].forEach((left) => {
-          const weed = make("svg", { viewBox: "0 0 22 40", class: "duckweed" });
-          weed.style.left = `${left + Math.random() * 6}%`;
-          weed.style.animationDelay = `${-Math.random() * 9}s`;
-          weed.append(make("ellipse", { cx: "11", cy: "4", rx: "10", ry: "3.5", fill: "#7fd06a" }));
-          [5, 11, 17].forEach((x) => weed.append(make("path", { d: `M${x} 6 q${(Math.random() - 0.5) * 6} 14 0 ${18 + Math.random() * 14}`, fill: "none", stroke: "rgba(220, 255, 220, 0.6)", "stroke-width": "1" })));
+          const weed = art("duckweed", 22, 40, `left:${left + rand(0, 6)}%; animation-delay:${-rand(0, 9)}s`);
+          weed.append(make("ellipse", { cx: 11, cy: 4, rx: 10, ry: 3.5, fill: "#7fd06a" }));
+          [5, 11, 17].forEach((x) => weed.append(make("path", { d: `M${x} 6 q${rand(-3, 3)} 14 0 ${rand(18, 32)}`, fill: "none", stroke: "rgba(220,255,220,0.6)", "stroke-width": 1 })));
           tank.append(weed);
         });
         for (let k = 0; k < 16; k += 1) {
           const speck = document.createElement("span");
           speck.className = "speck";
-          speck.style.cssText = `left:${Math.random() * 90}%; top:${40 + Math.random() * 170}px; --t:${10 + Math.random() * 10}s; --d:${-Math.random() * 20}s`;
+          speck.style.cssText = `left:${rand(0, 90)}%; top:${rand(40, 210)}px; --t:${rand(10, 20)}s; --d:${-rand(0, 20)}s`;
           tank.append(speck);
         }
       }
