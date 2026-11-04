@@ -95,12 +95,27 @@
     .fish { position: absolute; left: -60px; width: 46px; height: 28px; z-index: 2; animation: swim 11s linear infinite; }
     .fish svg { width: 100%; height: 100%; overflow: visible; animation: bob 1.6s ease-in-out infinite; }
     .fish .tail { transform-origin: 14px 14px; animation: wag 0.45s ease-in-out infinite alternate; }
-    .fish.f1 { top: 84px; width: 52px; height: 32px; }
+    .fish.f1 { top: 84px; left: 10px; width: 52px; height: 32px; animation-duration: 14s; }
     .fish.f2 { top: 150px; width: 34px; height: 21px; animation-duration: 15s; animation-delay: -6s; }
-    .fish.f3 { top: 118px; width: 40px; height: 25px; animation-name: swim-back; animation-duration: 13s; animation-delay: -3s; }
+    .fish.f3 { top: 118px; left: 10px; width: 40px; height: 25px; animation-duration: 17s; animation-delay: -3s; }
     .school { position: absolute; top: 60px; left: -90px; z-index: 2; width: 80px; height: 40px; animation: swim 9s linear infinite; animation-delay: -4s; }
     .school svg { width: 100%; height: 100%; animation: bob 2.2s ease-in-out infinite; }
     .bubble { position: absolute; bottom: 34px; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.75); animation: bubble 4.5s ease-in infinite; opacity: 0; z-index: 3; }
+
+    /* ---- more life (built by grow() below): thick plants, duckweed, a crab, a shrimp, a puffer, drifting specks ---- */
+    .plant { position: absolute; bottom: 26px; z-index: 2; transform-origin: 50% 100%; animation: sway var(--sway, 4s) ease-in-out infinite; animation-delay: var(--delay, 0s); }
+    .plant.front { z-index: 4; bottom: 18px; }
+    .plant path { fill: none; stroke-linecap: round; }
+    .leafy path { stroke: none; }
+    .moss { position: absolute; bottom: 30px; z-index: 4; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #7fd06a, #2f7d3a); box-shadow: inset -3px -3px 6px rgba(0, 0, 0, 0.25); animation: breathe 5s ease-in-out infinite; }
+    .duckweed { position: absolute; top: 12px; z-index: 5; width: 22px; height: 40px; animation: drift 9s ease-in-out infinite alternate; }
+    .speck { position: absolute; z-index: 3; width: 3px; height: 3px; border-radius: 50%; background: rgba(255, 255, 255, 0.55); animation: speck var(--t, 14s) linear infinite; animation-delay: var(--d, 0s); }
+    .crab { position: absolute; bottom: 14px; left: 20%; z-index: 5; width: 34px; height: 22px; animation: scuttle 14s ease-in-out infinite; }
+    .crab .claw { transform-origin: 50% 100%; transform-box: fill-box; animation: snap 0.6s ease-in-out infinite alternate; }
+    .shrimp { position: absolute; bottom: 30px; right: 40%; z-index: 5; width: 26px; height: 16px; animation: hop 5s ease-in-out infinite; }
+    .puffer { position: absolute; top: 180px; left: -60px; z-index: 2; width: 34px; height: 30px; animation: swim 19s linear infinite; animation-delay: -9s; }
+    .puffer svg { width: 100%; height: 100%; overflow: visible; animation: puff 7s ease-in-out infinite; }
+    .fish.roam { animation-name: roam; animation-timing-function: ease-in-out; }
 
     /* ---- the cat on the lid: the panel's own 3D cat (cat/), or a drawn one when there is no 3D ---- */
     .cat3d { position: absolute; left: 50%; bottom: calc(100% - 26px); width: 240px; height: 300px; margin-left: -120px; z-index: 7; transform: scale(0.62); transform-origin: 50% 100%; cursor: pointer; }
@@ -134,6 +149,14 @@
     @keyframes shimmer { 50% { opacity: 0.35; transform: skewX(-10deg) translateX(10px); } }
     @keyframes sway { 50% { transform: rotate(7deg); } }
     @keyframes swim { from { transform: translateX(0); } to { transform: translateX(470px); } }
+    @keyframes breathe { 50% { transform: scale(1.05); } }
+    @keyframes drift { to { transform: translateX(30px) rotate(6deg); } }
+    @keyframes speck { from { transform: translate(0, 0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } to { transform: translate(60px, -40px); opacity: 0; } }
+    @keyframes scuttle { 0%, 100% { transform: translateX(0); } 45% { transform: translateX(150px); } 55% { transform: translateX(150px); } }
+    @keyframes snap { to { transform: rotate(-14deg); } }
+    @keyframes hop { 0%, 60%, 100% { transform: translate(0, 0); } 70% { transform: translate(-14px, -26px) rotate(-12deg); } 80% { transform: translate(-28px, 0); } 90% { transform: translate(-28px, 0); } }
+    @keyframes puff { 0%, 70%, 100% { transform: scale(1); } 76%, 88% { transform: scale(1.55); } }
+    @keyframes roam { 0% { transform: translateX(0) scaleX(1); } 45% { transform: translateX(300px) scaleX(1); } 50% { transform: translateX(300px) scaleX(-1); } 95% { transform: translateX(20px) scaleX(-1); } 100% { transform: translateX(0) scaleX(1); } }
     @keyframes caustics { to { background-position: 30px 6px, -24px 10px, 14px -6px; opacity: 0.2; } }
     @keyframes flag { to { transform: skewY(-12deg) scaleX(0.85); } }
     @keyframes chest { 0%, 60%, 100% { transform: rotate(0); } 70%, 88% { transform: rotate(-32deg); } }
@@ -183,9 +206,9 @@
           <span class="bubble" style="left:6px; bottom:0; width:6px; height:6px; animation-delay:-2.1s"></span>
         </span>
         <svg class="deco jelly" viewBox="0 0 30 44"><path d="M2 16 Q15 -4 28 16 Z" fill="#f6a9ff" opacity="0.8"/><g class="tentacles" fill="none" stroke="#f6a9ff" stroke-width="2" opacity="0.7"><path d="M7 16 q-3 8 0 16 q3 6 0 10"/><path d="M15 16 q3 10 0 18"/><path d="M23 16 q3 8 0 16 q-3 6 0 10"/></g><circle cx="11" cy="11" r="1.4" fill="#7a3c80"/><circle cx="19" cy="11" r="1.4" fill="#7a3c80"/></svg>
-        <div class="fish f1"><svg viewBox="0 0 46 28"><g class="tail"><path d="M14 14 L0 3 L3 14 L0 25 Z" fill="#ff7a1a"/></g><ellipse cx="28" cy="14" rx="17" ry="11" fill="#ff8f2e"/><path d="M21 4 q6 10 0 20 M31 3 q5 11 0 22" fill="none" stroke="#fff" stroke-width="3.2"/><path d="M21 4 q6 10 0 20 M31 3 q5 11 0 22" fill="none" stroke="#1d1d1f" stroke-width="0.8" opacity="0.4"/><circle cx="38" cy="11" r="2.4" fill="#1d1d1f"/></svg></div>
+        <div class="fish f1 roam"><svg viewBox="0 0 46 28"><g class="tail"><path d="M14 14 L0 3 L3 14 L0 25 Z" fill="#ff7a1a"/></g><ellipse cx="28" cy="14" rx="17" ry="11" fill="#ff8f2e"/><path d="M21 4 q6 10 0 20 M31 3 q5 11 0 22" fill="none" stroke="#fff" stroke-width="3.2"/><path d="M21 4 q6 10 0 20 M31 3 q5 11 0 22" fill="none" stroke="#1d1d1f" stroke-width="0.8" opacity="0.4"/><circle cx="38" cy="11" r="2.4" fill="#1d1d1f"/></svg></div>
         <div class="fish f2"><svg viewBox="0 0 46 28"><g class="tail"><path d="M14 14 L0 3 L3 14 L0 25 Z" fill="#7c5cff"/></g><ellipse cx="28" cy="14" rx="17" ry="11" fill="#9b84ff"/><circle cx="37" cy="11" r="2.4" fill="#1d1d1f"/></svg></div>
-        <div class="fish f3"><svg viewBox="0 0 46 28"><g class="tail"><path d="M14 14 L0 3 L3 14 L0 25 Z" fill="#2f6fe0"/></g><ellipse cx="28" cy="14" rx="17" ry="11" fill="#4f8cff"/><path d="M14 10 Q28 2 42 12" fill="none" stroke="#ffd95e" stroke-width="3"/><circle cx="37" cy="11" r="2.4" fill="#1d1d1f"/></svg></div>
+        <div class="fish f3 roam"><svg viewBox="0 0 46 28"><g class="tail"><path d="M14 14 L0 3 L3 14 L0 25 Z" fill="#2f6fe0"/></g><ellipse cx="28" cy="14" rx="17" ry="11" fill="#4f8cff"/><path d="M14 10 Q28 2 42 12" fill="none" stroke="#ffd95e" stroke-width="3"/><circle cx="37" cy="11" r="2.4" fill="#1d1d1f"/></svg></div>
         <div class="school"><svg viewBox="0 0 80 40"><g fill="#5ff3ff"><path d="M4 10 l8 -3 l0 6 z M10 10 m0 0"/><ellipse cx="14" cy="10" rx="6" ry="2.6"/><ellipse cx="34" cy="20" rx="6" ry="2.6"/><ellipse cx="22" cy="30" rx="6" ry="2.6"/><ellipse cx="50" cy="12" rx="6" ry="2.6"/><ellipse cx="62" cy="26" rx="6" ry="2.6"/></g><g fill="#ff5d9e"><ellipse cx="16" cy="10.6" rx="3" ry="1"/><ellipse cx="36" cy="20.6" rx="3" ry="1"/><ellipse cx="24" cy="30.6" rx="3" ry="1"/><ellipse cx="52" cy="12.6" rx="3" ry="1"/><ellipse cx="64" cy="26.6" rx="3" ry="1"/></g></svg></div>
         <svg class="deco snail" viewBox="0 0 30 22"><path d="M2 20 Q14 14 28 20 Z" fill="#c9a27a"/><circle cx="14" cy="11" r="8" fill="#e8b97a" stroke="#b07a4f" stroke-width="1.5"/><path d="M14 11 m-4 0 a4 4 0 1 0 4 -4" fill="none" stroke="#b07a4f" stroke-width="1.5"/><path d="M24 16 L27 9 M26 17 L29 11" stroke="#c9a27a" stroke-width="1.5" stroke-linecap="round"/></svg>
         <span class="stone-bubbler"></span>
@@ -200,6 +223,9 @@
           <i style="left:70%; top:24px; width:7px; height:5px; background:#d48a8a"></i>
           <i style="left:86%; top:15px; width:9px; height:6px; background:#9aa3ad"></i>
         </div>
+        <svg class="crab" viewBox="0 0 34 22"><g stroke="#c4472f" stroke-width="2" stroke-linecap="round"><path d="M6 16 l-5 4 M9 18 l-4 4 M28 16 l5 4 M25 18 l4 4"/></g><ellipse cx="17" cy="14" rx="11" ry="7" fill="#ff6a4d"/><g class="claw"><path d="M4 10 q-4 -6 2 -9 q2 4 -1 5 z" fill="#ff6a4d"/></g><g class="claw"><path d="M30 10 q4 -6 -2 -9 q-2 4 1 5 z" fill="#ff6a4d"/></g><circle cx="13" cy="8" r="2" fill="#1d1d1f"/><circle cx="21" cy="8" r="2" fill="#1d1d1f"/></svg>
+        <svg class="shrimp" viewBox="0 0 26 16"><path d="M24 8 Q20 1 11 3 Q3 5 4 11 Q8 15 14 12" fill="#ff9d8a" stroke="#e2735e" stroke-width="1.2"/><path d="M4 11 l-3 3 M4 11 l-3 -1" stroke="#e2735e" stroke-width="1.2"/><path d="M22 6 q4 -6 3 -5 M23 7 q3 -2 3 -1" fill="none" stroke="#e2735e" stroke-width="0.8"/><circle cx="20" cy="6" r="1.1" fill="#1d1d1f"/></svg>
+        <div class="puffer"><svg viewBox="0 0 34 30"><path d="M6 15 L0 9 L1 15 L0 21 Z" fill="#e8c35a"/><circle cx="19" cy="15" r="12" fill="#ffd95e"/><g stroke="#e0a83a" stroke-width="1.2"><path d="M19 2 v-2 M28 6 l2 -2 M31 15 h2 M28 24 l2 2 M19 28 v2 M10 24 l-2 2"/></g><circle cx="25" cy="12" r="2.2" fill="#1d1d1f"/><path d="M28 18 q2 1 0 2" fill="none" stroke="#1d1d1f" stroke-width="1"/></svg></div>
         <svg class="deco star" viewBox="0 0 26 26"><path d="M13 1 L16 10 L25 10 L18 16 L21 25 L13 19 L5 25 L8 16 L1 10 L10 10 Z" fill="#ff9b54" stroke="#e0763a" stroke-width="1" stroke-linejoin="round"/></svg>
       </div>
       <div class="stand"></div>
@@ -257,6 +283,60 @@
         }
       }
 
+      // A thicket along the bottom, duckweed on top and specks drifting in the water — a little different each visit.
+      function grow() {
+        const tank = document.querySelector(".tank"), SVG = "http://www.w3.org/2000/svg";
+        const greens = ["#3fa66b", "#2f8a57", "#5cc36f", "#4bb07a", "#78c850", "#2c7a4b"];
+        const pick = (list) => list[Math.floor(Math.random() * list.length)];
+        const make = (tag, attrs) => {
+          const node = document.createElementNS(SVG, tag);
+          Object.entries(attrs).forEach(([name, value]) => node.setAttribute(name, value));
+          return node;
+        };
+        const plant = (left, height, front) => {
+          const svg = make("svg", { viewBox: "0 0 40 120", class: `plant${front ? " front" : ""}`, preserveAspectRatio: "none" });
+          svg.style.cssText = `left:${left}%; width:${18 + Math.random() * 22}px; height:${height}px; --sway:${3 + Math.random() * 3}s; --delay:${-Math.random() * 4}s`;
+          const blades = 2 + Math.floor(Math.random() * 3);
+          for (let k = 0; k < blades; k += 1) {
+            const x = 8 + Math.random() * 24, bend = (Math.random() - 0.5) * 30, top = 4 + Math.random() * 40;
+            svg.append(make("path", { d: `M${x} 120 C${x + bend} 90 ${x - bend} ${60} ${x + bend / 2} ${top}`, stroke: pick(greens), "stroke-width": String(3 + Math.random() * 4) }));
+          }
+          return svg;
+        };
+        const leafy = (left) => {
+          const svg = make("svg", { viewBox: "0 0 50 60", class: "plant leafy front" });
+          svg.style.cssText = `left:${left}%; width:44px; height:52px; --sway:${4 + Math.random() * 2}s; --delay:${-Math.random() * 3}s`;
+          [[25, 60, -35], [25, 60, 0], [25, 60, 35], [25, 60, -60], [25, 60, 60]].forEach(([x, y, angle]) => {
+            const leaf = make("path", { d: `M${x} ${y} Q${x - 10} ${y - 30} ${x} ${y - 52} Q${x + 10} ${y - 30} ${x} ${y}`, fill: pick(greens), transform: `rotate(${angle} ${x} ${y})` });
+            svg.append(leaf);
+          });
+          return svg;
+        };
+        for (let left = -2; left < 100; left += 6 + Math.random() * 6) tank.append(plant(left, 50 + Math.random() * 110, false));
+        for (let left = 2; left < 100; left += 14 + Math.random() * 10) tank.append(plant(left, 26 + Math.random() * 30, true));
+        [6, 46, 88].forEach((left) => tank.append(leafy(left + Math.random() * 4)));
+        [[24, 18], [80, 14], [66, 11]].forEach(([left, size]) => {
+          const moss = document.createElement("span");
+          moss.className = "moss";
+          moss.style.cssText = `left:${left}%; width:${size}px; height:${size}px; animation-delay:${-Math.random() * 5}s`;
+          tank.append(moss);
+        });
+        [8, 30, 70].forEach((left) => {
+          const weed = make("svg", { viewBox: "0 0 22 40", class: "duckweed" });
+          weed.style.left = `${left + Math.random() * 6}%`;
+          weed.style.animationDelay = `${-Math.random() * 9}s`;
+          weed.append(make("ellipse", { cx: "11", cy: "4", rx: "10", ry: "3.5", fill: "#7fd06a" }));
+          [5, 11, 17].forEach((x) => weed.append(make("path", { d: `M${x} 6 q${(Math.random() - 0.5) * 6} 14 0 ${18 + Math.random() * 14}`, fill: "none", stroke: "rgba(220, 255, 220, 0.6)", "stroke-width": "1" })));
+          tank.append(weed);
+        });
+        for (let k = 0; k < 16; k += 1) {
+          const speck = document.createElement("span");
+          speck.className = "speck";
+          speck.style.cssText = `left:${Math.random() * 90}%; top:${40 + Math.random() * 170}px; --t:${10 + Math.random() * 10}s; --d:${-Math.random() * 20}s`;
+          tank.append(speck);
+        }
+      }
+
       // The panel's own cat (cat/avatar3d.js, copied from the bot by publish.sh), in a snorkel mask, watching
       // the clownfish; the drawn one stands in where there is no 3D.
       async function bringCat() {
@@ -286,6 +366,7 @@
 
       function wait() {
         document.body.classList.add("waiting");
+        grow();
         bringCat();
         if (!target) {
           document.getElementById("why").textContent = "Откройте бота из Telegram — кнопкой слева от поля ввода в чате с ним.";
