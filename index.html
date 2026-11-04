@@ -1,0 +1,262 @@
+<!doctype html>
+<!--
+  The bot's showcase: an always-on page (GitHub Pages) that Telegram's «Панель» and «Мой кот» buttons open first.
+  It asks the bot whether it is alive (<panel>/healthz) and goes straight on to the panel; while the computer the bot
+  lives on sleeps, it shows a waiting screen — an aquarium, a cat watching the fish — and keeps asking, opening the
+  panel by itself once the bot is back. The panel's address comes in ?panel= (the bot sets it on its buttons).
+-->
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Бот отдыхает</title>
+  <script src="https://telegram.org/js/telegram-web-app.js?59"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <style>
+    :root {
+      --bg: #ebeae7; --surface: #f0efec; --ink: #1d1d1f; --hint: #6e6e73; --accent: #2f6fe0;
+      --light: rgba(255, 255, 255, 0.92); --dark: rgba(158, 154, 145, 0.48);
+      --raised: 7px 9px 20px var(--dark), -7px -7px 16px var(--light);
+      --inset: inset 3px 3px 7px var(--dark), inset -3px -3px 7px var(--light);
+      --water-top: #8fd6f0; --water-bottom: #2f7fb8; --sand: #e9d3a0; --glass: rgba(255, 255, 255, 0.45);
+      --cat: #fbfbfa; --cat-shade: #dcdcd8;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #17181c; --surface: #1e2026; --ink: #f2f2f4; --hint: #a2a3aa; --accent: #6ea2ff;
+        --light: rgba(255, 255, 255, 0.05); --dark: rgba(0, 0, 0, 0.55);
+        --water-top: #2a6f93; --water-bottom: #0c2a45; --sand: #8a7650; --glass: rgba(255, 255, 255, 0.18);
+        --cat-shade: #c9c9c6;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #17181c; --surface: #1e2026; --ink: #f2f2f4; --hint: #a2a3aa; --accent: #6ea2ff;
+      --light: rgba(255, 255, 255, 0.05); --dark: rgba(0, 0, 0, 0.55);
+      --water-top: #2a6f93; --water-bottom: #0c2a45; --sand: #8a7650; --glass: rgba(255, 255, 255, 0.18);
+      --cat-shade: #c9c9c6;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      display: grid; place-items: center; min-height: 100vh; padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+      background: var(--bg); color: var(--ink); font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    main { width: min(100%, 440px); text-align: center; }
+
+    /* ---- while asking: a quiet splash, so a bot that is up opens without the waiting screen flashing ---- */
+    .splash { display: grid; place-items: center; gap: 14px; color: var(--hint); font-size: 14px; }
+    .splash .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+    body.waiting .splash { display: none; }
+    .scene, .words { display: none; }
+    body.waiting .scene, body.waiting .words { display: block; animation: rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    body.waiting .words { animation-delay: 120ms; }
+
+    /* ---- the aquarium with the cat on its rim ---- */
+    .scene { position: relative; margin: 70px auto 22px; width: min(100%, 360px); }
+    .tank {
+      position: relative; height: 230px; overflow: hidden; border-radius: 26px 26px 30px 30px;
+      background: linear-gradient(180deg, var(--water-top) 0%, var(--water-bottom) 100%);
+      box-shadow: var(--raised), inset 0 0 0 6px var(--glass), inset 0 14px 22px rgba(255, 255, 255, 0.25);
+    }
+    .tank::before { /* the water line */
+      content: ""; position: absolute; left: 0; right: 0; top: 18px; height: 10px;
+      background: rgba(255, 255, 255, 0.35); filter: blur(2px); animation: ripple 3.2s ease-in-out infinite;
+    }
+    .tank::after { /* a glint on the glass */
+      content: ""; position: absolute; top: 34px; left: 18px; width: 14px; height: 120px; border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0)); transform: rotate(6deg);
+    }
+    .ray { position: absolute; top: 0; width: 46px; height: 230px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 80%); transform: skewX(-14deg); animation: shimmer 6s ease-in-out infinite; }
+    .ray.r2 { left: 46%; width: 30px; animation-delay: -2s; }
+    .ray.r1 { left: 18%; }
+    .sand { position: absolute; left: 0; right: 0; bottom: 0; height: 34px; background: var(--sand); border-radius: 50% 50% 0 0 / 30% 30% 0 0; }
+    .stone { position: absolute; bottom: 18px; border-radius: 50%; background: #9aa3ad; }
+    .weed { position: absolute; bottom: 20px; width: 40px; height: 110px; transform-origin: 50% 100%; animation: sway 4s ease-in-out infinite; }
+    .weed path { fill: none; stroke: #3fa66b; stroke-width: 7; stroke-linecap: round; }
+    .weed.w2 { left: auto; right: 34px; height: 80px; animation-duration: 5s; animation-delay: -1.5s; }
+    .weed.w2 path { stroke: #2f8a57; }
+    .fish { position: absolute; left: -60px; width: 46px; height: 28px; animation: swim 11s linear infinite; }
+    .fish svg { width: 100%; height: 100%; overflow: visible; animation: bob 1.6s ease-in-out infinite; }
+    .fish .tail { transform-origin: 14px 14px; animation: wag 0.45s ease-in-out infinite alternate; }
+    .fish.f1 { top: 70px; }
+    .fish.f2 { top: 130px; width: 34px; height: 21px; animation-duration: 15s; animation-delay: -6s; }
+    .fish.f3 { top: 100px; width: 38px; height: 23px; animation-name: swim-back; animation-duration: 13s; animation-delay: -3s; }
+    .bubble { position: absolute; bottom: 30px; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.75); animation: bubble 4.5s ease-in infinite; opacity: 0; }
+
+    .cat { position: absolute; left: 50%; top: -86px; width: 132px; margin-left: -66px; z-index: 2; }
+    .cat svg { width: 100%; overflow: visible; }
+    .cat .tail { transform-origin: 104px 104px; animation: tail 2.6s ease-in-out infinite; }
+    .cat .pupil { animation: watch 11s linear infinite; }
+    .cat .paw { transform-origin: 82px 100px; animation: dip 7s ease-in-out infinite; }
+    .cat .ear { transform-origin: 50% 100%; }
+    .cat .blink { animation: blink 5s infinite; transform-origin: 50% 50%; transform-box: fill-box; }
+
+    /* ---- the words ---- */
+    h1 { margin: 0 0 10px; font-size: 26px; line-height: 1.15; letter-spacing: -0.03em; }
+    .why { margin: 0 4px 18px; color: var(--hint); font-size: 15px; line-height: 1.5; }
+    .status {
+      display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 999px;
+      background: var(--surface); box-shadow: var(--inset); color: var(--hint); font-size: 13px;
+    }
+    .status i { width: 8px; height: 8px; border-radius: 50%; background: #f5a524; animation: pulse 1.4s ease-in-out infinite; }
+    .status.up i { background: #2fa65a; }
+    .again {
+      display: block; margin: 16px auto 0; padding: 12px 22px; border: 0; border-radius: 16px; cursor: pointer;
+      background: var(--surface); box-shadow: var(--raised); color: var(--ink); font: 600 15px/1 inherit; font-family: inherit;
+    }
+    .again:active { box-shadow: var(--inset); }
+    .small { margin-top: 18px; color: var(--hint); font-size: 12px; opacity: 0.8; }
+
+    @keyframes pulse { 50% { transform: scale(0.7); opacity: 0.5; } }
+    @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+    @keyframes ripple { 50% { transform: translateY(3px) scaleX(1.02); } }
+    @keyframes shimmer { 50% { opacity: 0.35; transform: skewX(-10deg) translateX(10px); } }
+    @keyframes sway { 50% { transform: rotate(7deg); } }
+    @keyframes swim { from { transform: translateX(0); } to { transform: translateX(470px); } }
+    @keyframes swim-back { from { transform: translateX(470px) scaleX(-1); } to { transform: translateX(0) scaleX(-1); } }
+    @keyframes bob { 50% { transform: translateY(5px); } }
+    @keyframes wag { to { transform: rotate(-22deg); } }
+    @keyframes bubble { 0% { opacity: 0; transform: translateY(0); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-190px) translateX(8px); } }
+    @keyframes tail { 50% { transform: rotate(-18deg); } }
+    @keyframes watch { 0%, 100% { transform: translateX(-2.5px); } 50% { transform: translateX(2.5px); } }
+    @keyframes dip { 0%, 70%, 100% { transform: rotate(0); } 78% { transform: rotate(-28deg); } 86% { transform: rotate(-6deg); } }
+    @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="splash" role="status"><span class="dot" aria-hidden="true"></span>Открываю бота…</div>
+
+    <div class="scene" aria-hidden="true">
+      <div class="cat">
+        <svg viewBox="0 0 140 120">
+          <path class="tail" d="M104 104 C128 100 132 76 120 64" fill="none" stroke="var(--cat)" stroke-width="11" stroke-linecap="round"/>
+          <ellipse cx="70" cy="100" rx="30" ry="20" fill="var(--cat)" stroke="var(--cat-shade)" stroke-width="1.5"/>
+          <path class="paw" d="M82 100 q10 18 2 26" fill="none" stroke="var(--cat)" stroke-width="10" stroke-linecap="round"/>
+          <path class="ear" d="M28 40 L34 10 L54 30 Z" fill="var(--cat)" stroke="var(--cat-shade)" stroke-width="1.5" stroke-linejoin="round"/>
+          <path class="ear" d="M112 40 L106 10 L86 30 Z" fill="var(--cat)" stroke="var(--cat-shade)" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M35 28 L38 16 L47 27 Z M105 28 L102 16 L93 27 Z" fill="#f4c6cf"/>
+          <path d="M20 62 C20 30 40 22 70 22 C100 22 120 30 120 62 C120 82 106 92 70 92 C34 92 20 82 20 62 Z" fill="var(--cat)" stroke="var(--cat-shade)" stroke-width="1.5"/>
+          <g class="blink"><ellipse cx="54" cy="60" rx="5.5" ry="6.5" fill="#1d1d1f"/><ellipse class="pupil" cx="52.5" cy="58" rx="1.8" ry="2" fill="#fff"/></g>
+          <g class="blink"><ellipse cx="86" cy="60" rx="5.5" ry="6.5" fill="#1d1d1f"/><ellipse class="pupil" cx="84.5" cy="58" rx="1.8" ry="2" fill="#fff"/></g>
+          <path d="M64 71 q3 4 6 0 q3 4 6 0" fill="none" stroke="#1d1d1f" stroke-width="2" stroke-linecap="round"/>
+          <ellipse cx="44" cy="70" rx="6" ry="3.5" fill="#f4c6cf" opacity="0.7"/><ellipse cx="96" cy="70" rx="6" ry="3.5" fill="#f4c6cf" opacity="0.7"/>
+        </svg>
+      </div>
+      <div class="tank">
+        <span class="ray r1"></span><span class="ray r2"></span>
+        <svg class="weed" style="left:30px" viewBox="0 0 40 110"><path d="M20 110 C6 86 32 70 18 46 C8 28 26 16 20 2"/><path d="M24 110 C34 90 14 78 28 56"/></svg>
+        <svg class="weed w2" viewBox="0 0 40 110"><path d="M20 110 C30 88 8 72 22 48 C30 32 14 20 20 6"/></svg>
+        <div class="fish f1"><svg viewBox="0 0 46 28"><g class="tail"><path d="M14 14 L0 3 L3 14 L0 25 Z" fill="#ff8a3d"/></g><ellipse cx="28" cy="14" rx="17" ry="11" fill="#ffa34d"/><path d="M24 4 q6 10 0 20" fill="none" stroke="#fff" stroke-width="3" opacity="0.8"/><circle cx="37" cy="11" r="2.4" fill="#1d1d1f"/></svg></div>
+        <div class="fish f2"><svg viewBox="0 0 46 28"><g class="tail"><path d="M14 14 L0 3 L3 14 L0 25 Z" fill="#7c5cff"/></g><ellipse cx="28" cy="14" rx="17" ry="11" fill="#9b84ff"/><circle cx="37" cy="11" r="2.4" fill="#1d1d1f"/></svg></div>
+        <div class="fish f3"><svg viewBox="0 0 46 28"><g class="tail"><path d="M14 14 L0 3 L3 14 L0 25 Z" fill="#f2c94c"/></g><ellipse cx="28" cy="14" rx="17" ry="11" fill="#ffd95e"/><path d="M22 5 q5 9 0 18" fill="none" stroke="#e07b39" stroke-width="2.5" opacity="0.8"/><circle cx="37" cy="11" r="2.4" fill="#1d1d1f"/></svg></div>
+        <span class="bubble" style="left:28%"></span>
+        <span class="bubble" style="left:30%; animation-delay:-1.4s; width:6px; height:6px"></span>
+        <span class="bubble" style="left:70%; animation-delay:-2.6s"></span>
+        <span class="bubble" style="left:72%; animation-delay:-0.7s; width:5px; height:5px"></span>
+        <span class="stone" style="left:44%; width:34px; height:18px"></span>
+        <span class="stone" style="left:56%; width:20px; height:12px; background:#b6bdc6"></span>
+        <div class="sand"></div>
+      </div>
+    </div>
+
+    <div class="words">
+      <h1>Бот прилёг отдохнуть 😴</h1>
+      <p class="why" id="why">Компьютер, на котором живёт бот, сейчас выключен или спит. Панель, посты и розыгрыши подождут — ничего не потеряется. Как только бот проснётся, эта страница сама откроет его.</p>
+      <div class="status" id="status" role="status"><i aria-hidden="true"></i><span id="status-text">Жду, когда бот проснётся…</span></div>
+      <button class="again" id="again" type="button">Проверить сейчас</button>
+      <p class="small">Пока ждём — кот присмотрит за рыбками 🐟</p>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+      const CHECK_EVERY_MS = 10_000, TIMEOUT_MS = 5_000, SPLASH_MS = 1_200;
+      const tg = window.Telegram && window.Telegram.WebApp;
+      const panel = new URLSearchParams(location.search).get("panel");
+      const statusBox = document.getElementById("status"), statusText = document.getElementById("status-text");
+      let checking = false;
+
+      if (tg) {
+        tg.ready();
+        tg.expand();
+        if (tg.colorScheme) document.documentElement.dataset.theme = tg.colorScheme;
+      }
+
+      // Only https panels (a tunnel, a server) — and http on this computer, for trying the page out.
+      function safePanel(raw) {
+        try {
+          const url = new URL(raw);
+          const local = url.protocol === "http:" && ["127.0.0.1", "localhost"].includes(url.hostname);
+          return url.protocol === "https:" || local ? url.origin : null;
+        } catch (_) {
+          return null;
+        }
+      }
+
+      const target = panel && safePanel(panel);
+
+      async function alive() {
+        if (!target) return false;
+        const stop = new AbortController();
+        const timer = setTimeout(() => stop.abort(), TIMEOUT_MS);
+        try {
+          const response = await fetch(`${target}/healthz`, { cache: "no-store", signal: stop.signal });
+          return response.ok && (await response.json()).ok === true;
+        } catch (_) {
+          return false;
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      function wait() {
+        document.body.classList.add("waiting");
+        if (!target) {
+          document.getElementById("why").textContent = "Откройте бота из Telegram — кнопкой слева от поля ввода в чате с ним.";
+          statusText.textContent = "Адрес панели не передан";
+        }
+      }
+
+      // Telegram passes who opened it in the address's #fragment: the panel needs it too.
+      function open() {
+        statusBox.classList.add("up");
+        statusText.textContent = "Бот проснулся! Открываю…";
+        location.replace(`${target}/${location.hash}`);
+      }
+
+      async function check() {
+        if (checking) return;
+        checking = true;
+        statusText.textContent = "Проверяю, не проснулся ли…";
+        const up = await alive();
+        checking = false;
+        if (up) open();
+        else statusText.textContent = `Пока спит. Проверю ещё раз через ${CHECK_EVERY_MS / 1000} секунд`;
+      }
+
+      document.getElementById("again").addEventListener("click", () => {
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
+        check();
+      });
+
+      (async () => {
+        const splash = setTimeout(wait, SPLASH_MS); // a slow answer still ends on the waiting screen
+        if (await alive()) {
+          clearTimeout(splash);
+          open();
+          return;
+        }
+        clearTimeout(splash);
+        wait();
+        if (target) setInterval(check, CHECK_EVERY_MS);
+      })();
+    })();
+  </script>
+</body>
+</html>
