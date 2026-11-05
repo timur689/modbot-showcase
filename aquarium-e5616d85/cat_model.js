@@ -62,13 +62,13 @@ export function furry(geometry, { length = 0.009, density = 300, comb = [-1, -0.
 // Soft: the normals of neighbouring facets averaged, so light (and fur) flows over the edges.
 const soft = (geometry) => smoothNormals(geometry.index ? geometry.toNonIndexed() : geometry);
 
-// White, a little creamier in places, the underside a little shaded.
-function coat(geometry) {
+// White, a little creamier in places; where the cat lies on the ledge (`belly`), the underside a little shaded.
+function coat(geometry, { belly = true } = {}) {
   const { position } = geometry.attributes;
   const colors = new Float32Array(position.count * 3);
   for (let i = 0; i < position.count; i += 1) {
     const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
-    const c = mix(color(FUR.white), color(FUR.shade), 0.1 + noise(x * 9, y * 9, z * 9) * 0.12 + Math.max(0, 0.07 - y) * 3);
+    const c = mix(color(FUR.white), color(FUR.shade), 0.1 + noise(x * 9, y * 9, z * 9) * 0.12 + (belly ? Math.max(0, 0.07 - y) * 3 : 0));
     colors.set([c.r, c.g, c.b], i * 3);
   }
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
@@ -126,10 +126,34 @@ export function body() {
   return coat(soft(flatten(merge(parts))));
 }
 
-// The near forearm hanging over the edge, from the elbow (its pivot) down to its paw.
+// The near front leg hanging over the edge, relaxed, as a real cat's does: a rounded elbow over the edge, the
+// forearm tapering down to the wrist (its own joint), then the paw: an oval wider side to side than front to back,
+// its toes showing at the tip and the whole paw curled a little back towards the glass.
+export const WRIST = Object.freeze(V(0.01, -0.15, 0.036)); // from the elbow
+
 export function forearm() {
-  const limb = prism(curve(V(0, 0, 0), V(0.005, -0.09, 0.03), V(0.01, -0.165, 0.04), 4), (s) => 0.054 - s * 0.012);
-  return coat(soft(merge([limb, gem([0.064, 0.07, 0.06], [0.013, -0.21, 0.052], 0, 6)])));
+  const path = new THREE.CatmullRomCurve3([V(0, 0, 0), V(0.004, -0.06, 0.03), WRIST.clone()]).getPoints(10);
+  const arm = tube(path, (s) => 0.056 - s * 0.017, 14);
+  const elbow = new THREE.SphereGeometry(0.056, 20, 14); // rounds the bend over the edge
+  return { arm: coat(soft(merge([arm, elbow])), { belly: false }), paw: paw() };
+}
+
+function paw() { // from the wrist (its origin) down
+  const path = new THREE.CatmullRomCurve3([V(0, 0.012, 0), V(0.001, -0.035, -0.002), V(0.002, -0.07, -0.008), V(0.002, -0.096, -0.02)]).getPoints(12);
+  const pad = tube(path, (s) => (s < 0.6 ? 0.039 + 0.014 * Math.sin((s / 0.6) * Math.PI * 0.5) : 0.053 - 0.03 * ((s - 0.6) / 0.4) ** 1.5), 16);
+  const { position } = pad.attributes;
+  for (let i = 0; i < position.count; i += 1) { // wider than deep below the wrist
+    const y = position.getY(i), wide = Math.min(1, Math.max(0, -y - 0.02) / 0.03);
+    position.setX(i, position.getX(i) * (1 + 0.16 * wide));
+    position.setZ(i, position.getZ(i) * (1 - 0.18 * wide));
+  }
+  const toes = [-0.03, -0.01, 0.01, 0.03].map((x) => {
+    const toe = new THREE.SphereGeometry(0.017, 12, 10);
+    toe.scale(1, 0.85, 0.9);
+    toe.translate(x, -0.092 + Math.abs(x) * 0.25, 0.006);
+    return toe;
+  });
+  return coat(soft(merge([pad, ...toes])), { belly: false });
 }
 
 // ---- the head (built facing +z, centred at its own origin): sharp, angular ----

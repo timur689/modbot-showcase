@@ -4,7 +4,7 @@
 // head, watches the clownfish, dabs at it with the hanging paw, yawns and settles back to sleep. A tap on it: it looks
 // at you, blinks slowly and purrs.
 
-import { ELBOW, LEDGE, body, forearm, furry, head, tail } from "./cat_model.js";
+import { ELBOW, LEDGE, WRIST, body, forearm, furry, head, tail } from "./cat_model.js";
 import { THREE, clamp, rand } from "./kit.js";
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -69,10 +69,15 @@ function buildCat() {
   neck.add(holder);
   const paw = new THREE.Group(); // the forearm hanging over the edge swings from the elbow
   paw.position.copy(ELBOW);
-  paw.add(furry(forearm(), { comb: [0, -1, 0.1] })); // down the leg
+  const leg = forearm();
+  paw.add(furry(leg.arm, { comb: [0, -1, 0.1] })); // the hair runs down the leg
+  const hand = new THREE.Group(); // the paw bends at the wrist
+  hand.position.copy(WRIST);
+  hand.add(furry(leg.paw, { comb: [0, -1, 0], length: 0.007 }));
+  paw.add(hand);
   const tailPart = tail(tailPath(0, 0));
   cat.add(chest, neck, paw, tailPart.mesh);
-  return { cat, chest, neck, holder, face, paw, tailPart };
+  return { cat, chest, neck, holder, face, paw, hand, tailPart };
 }
 
 // A catchlight in each eye, so an open eye looks wet and alive.
@@ -102,7 +107,7 @@ export function putCatToSleep(scene, { clownOnScreen = () => null } = {}) {
   const world = new THREE.Scene();
   lights(world);
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20);
-  const { cat, chest, neck, holder, face, paw, tailPart } = buildCat();
+  const { cat, chest, neck, holder, face, paw, hand, tailPart } = buildCat();
   catchlights(face);
   world.add(cat);
   let lid = [];
@@ -199,7 +204,9 @@ export function putCatToSleep(scene, { clownOnScreen = () => null } = {}) {
     }
     mind.dream = Math.max(0, mind.dream - dt * 2.5);
     const swipe = now.dab * Math.sin(t * 9);
-    paw.rotation.set(Math.sin(t * 0.5) * 0.04 + breath * 0.02 - swipe * 0.45 + Math.sin(mind.dream * 20) * 0.08 * mind.dream, 0, swipe * 0.2);
+    const twitch = Math.sin(mind.dream * 20) * mind.dream;
+    paw.rotation.set(Math.sin(t * 0.5) * 0.035 + breath * 0.02 - swipe * 0.45 + twitch * 0.06, 0, swipe * 0.2 + Math.sin(t * 0.37) * 0.02);
+    hand.rotation.set(0.18 + Math.sin(t * 0.5 + 0.8) * 0.05 + twitch * 0.25 + swipe * 0.35, 0, Math.sin(t * 0.31) * 0.03); // relaxed, curled a little to the glass
     face.eyes.forEach(({ lid, seam }) => {
       lid.rotation.x = Math.PI / 2 - now.open * (Math.PI / 2 + LID_OPEN); // closed: the lid's dome faces forward
       seam.visible = now.open < 0.25;
