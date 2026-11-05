@@ -52,7 +52,7 @@ function tailPath(t, flick) {
     V(-0.4, 0.15, -0.05), V(-0.5, 0.19, -0.07), V(-0.56, 0.3, -0.08 + sway * 0.3),
     V(-0.555 + sway * 0.4, 0.43, -0.07 + sway * 0.6), V(-0.5 + sway, 0.53 + nod, -0.05 + sway),
     V(-0.42 + sway * 1.3 + flick * 0.05, 0.56 + nod - flick * 0.05, -0.03 + sway * 1.2 + flick * 0.04),
-  ]).getPoints(25);
+  ]).getPoints(9); // few joints: a faceted tail
 }
 
 function buildCat() {
@@ -200,7 +200,10 @@ export function putCatToSleep(scene, { clownOnScreen = () => null } = {}) {
     mind.dream = Math.max(0, mind.dream - dt * 2.5);
     const swipe = now.dab * Math.sin(t * 9);
     paw.rotation.set(Math.sin(t * 0.5) * 0.04 + breath * 0.02 - swipe * 0.45 + Math.sin(mind.dream * 20) * 0.08 * mind.dream, 0, swipe * 0.2);
-    face.eyes.forEach(({ lid }) => { lid.rotation.x = Math.PI / 2 - now.open * (Math.PI / 2 + LID_OPEN); }); // closed: the lid's dome faces forward
+    face.eyes.forEach(({ lid, seam }) => {
+      lid.rotation.x = Math.PI / 2 - now.open * (Math.PI / 2 + LID_OPEN); // closed: the lid's dome faces forward
+      seam.visible = now.open < 0.25;
+    });
     face.mouth.scale.y = Math.max(0.001, now.yawn);
     // an ear twitches now and then, in its sleep too
     if (t > mind.earAt) {
