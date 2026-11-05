@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="aquarium-c79fd327/aquarium.css">
+  <link rel="stylesheet" href="aquarium-8fde1497/aquarium.css">
   <style>
     :root {
       --bg: #ebeae7; --surface: #f0efec; --ink: #1d1d1f; --hint: #6e6e73; --accent: #2f6fe0;
@@ -52,9 +52,9 @@
     body.waiting .scene, body.waiting .words { display: block; animation: rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
     body.waiting .words { animation-delay: 120ms; }
 
-    /* ---- the cat on the lid: the panel's own 3D cat (cat/), or a drawn one when there is no 3D ---- */
-    .cat3d { position: absolute; left: 50%; bottom: calc(100% - 26px); width: 240px; height: 300px; margin-left: -120px; z-index: 7; transform: scale(0.62); transform-origin: 50% 100%; cursor: pointer; }
-    .cat3d canvas { display: block; }
+    /* ---- the cat asleep on the lid (aquarium/sleepy_cat.js), or a drawn one when there is no 3D ---- */
+    .sleeper { position: absolute; left: -5px; right: -5px; top: 0; height: 0; z-index: 12; }
+    .sleeper canvas { position: absolute; left: 0; display: block; cursor: pointer; -webkit-tap-highlight-color: transparent; }
     .cat { position: absolute; left: 50%; top: -86px; width: 132px; margin-left: -66px; z-index: 7; display: none; }
     body.no3d .cat { display: block; }
     .cat svg { width: 100%; overflow: visible; }
@@ -91,7 +91,6 @@
     <div class="splash" role="status"><span class="dot" aria-hidden="true"></span>Открываю бота…</div>
 
     <div class="scene" aria-hidden="true" data-light="evening" data-ground="sand">
-      <div class="cat3d" id="cat3d" title="Погладить кота"></div>
       <div class="cat">
         <svg viewBox="0 0 140 120">
           <path class="tail" d="M104 104 C128 100 132 76 120 64" fill="none" stroke="var(--cat)" stroke-width="11" stroke-linecap="round"/>
@@ -128,7 +127,7 @@
       <p class="why" id="why">Компьютер, на котором живёт бот, сейчас выключен или спит. Панель, посты и розыгрыши подождут — ничего не потеряется. Как только бот проснётся, эта страница сама откроет его.</p>
       <div class="status" id="status" role="status"><i aria-hidden="true"></i><span id="status-text">Жду, когда бот проснётся…</span></div>
       <button class="again" id="again" type="button">Проверить сейчас</button>
-      <p class="small">Пока ждём — кот присмотрит за рыбками 🐟</p>
+      <p class="small">Пока ждём — кот дремлет на аквариуме и иногда просыпается поглядеть на рыбок 🐟</p>
       <p class="small">Если бот уже включён, а страница всё ждёт, — закройте её и откройте бота заново: после перезапуска у панели новый адрес.</p>
     </div>
   </main>
@@ -190,36 +189,21 @@
       let aquarium = null;
       async function fillTank() {
         try {
-          const { buildAquarium } = await import("./aquarium-c79fd327/main.js");
+          const { buildAquarium } = await import("./aquarium-8fde1497/main.js");
           aquarium = buildAquarium(document.querySelector(".scene"), document.getElementById("tune"));
         } catch (error) {
           console.warn("showcase: no aquarium", error); // the empty tank and the words still show
         }
       }
 
-      // The panel's own cat (cat/avatar3d.js, copied from the bot by publish.sh), in a snorkel mask, watching
-      // the clownfish; the drawn one stands in where there is no 3D.
+      // The cat asleep on the lid (aquarium/sleepy_cat.js): it wakes now and then to watch the clownfish. The drawn
+      // one stands in where there is no 3D.
       async function bringCat() {
-        const box = document.getElementById("cat3d");
         try {
-          const { createAvatar } = await import("./cat-c79fd327/avatar3d.js");
-          const cat = createAvatar(box);
-          cat.wear("snorkel");
-          setInterval(() => {
-            if (!aquarium) return; // the aquarium may still be filling
-            const at = aquarium.clownOnScreen(), me = box.getBoundingClientRect();
-            const x = (at.x - (me.left + me.width / 2)) / (window.innerWidth / 2);
-            const y = (at.y - (me.top + me.height * 0.3)) / (window.innerHeight / 2);
-            cat.look(Math.max(-1, Math.min(1, x)), Math.max(-1, Math.min(1, y)));
-          }, 200);
-          setInterval(() => (Math.random() < 0.5 ? cat.frolic() : cat.react("happy")), 9000);
-          box.addEventListener("click", () => {
-            cat.react("greet");
-            if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
-          });
+          const { putCatToSleep } = await import("./aquarium-8fde1497/sleepy_cat.js");
+          putCatToSleep(document.querySelector(".scene"), { clownOnScreen: () => (aquarium ? aquarium.clownOnScreen() : null) });
         } catch (error) {
           console.warn("showcase: no 3D cat", error);
-          box.remove();
           document.body.classList.add("no3d");
         }
       }
