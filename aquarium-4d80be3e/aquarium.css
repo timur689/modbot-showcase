@@ -39,7 +39,7 @@
 .scene[data-ground="soil"] { --grain-top: #5e4a38; --grain-mid: #3e3024; --grain-deep: #1d1510; --grain-dot: rgba(0, 0, 0, 0.45); --grain-size: 2px; }
 
 .scene { /* a little wider than the column on a phone, up to 440px on a big screen */
-  position: relative; margin: 96px 0 22px 50%; translate: -50% 0; width: min(calc(100% + 12px), 440px);
+  position: relative; margin: 132px 0 22px 50%; translate: -50% 0; width: min(calc(100% + 12px), 440px);
   transition: --water-top 1.2s, --water-mid 1.2s, --water-bottom 1.2s, --glow 1.2s, --room-glow 1.2s;
 }
 .scene::before { /* the lamp's light spilling into the room around the tank */

@@ -9,7 +9,7 @@
 import { THREE, color, curve, merge, mix, noise, painted, tube } from "./kit.js";
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-const SHELLS = 12;
+const SHELLS = 8;
 const FUR = Object.freeze({ white: "#f4f1ec", shade: "#ddd8d0", nose: "#e79aa4", ear: "#f0b3b9" });
 
 // ---- fur ----
@@ -35,7 +35,7 @@ function furPatch(shader, shell, length, density) {
 
 // The skin and its shells of fur, all sharing one geometry (so a moving tail moves its fur too). Each facet is lit
 // flat, as on the figurine.
-export function furry(geometry, { length = 0.009, density = 320 } = {}) {
+export function furry(geometry, { length = 0.006, density = 340 } = {}) {
   const group = new THREE.Group();
   for (let k = 0; k <= SHELLS; k += 1) {
     const shell = k / SHELLS;
@@ -80,7 +80,7 @@ function gem(scale, at, detail = 1, seed = 0) {
   const { position } = geometry.attributes;
   for (let i = 0; i < position.count; i += 1) {
     const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
-    const bump = 1 + noise(x * 2.3 + seed, y * 2.3, z * 2.3 - seed) * 0.08;
+    const bump = 1 + noise(x * 2.3 + seed, y * 2.3, z * 2.3 - seed) * 0.12;
     position.setXYZ(i, x * bump * scale[0] + at[0], y * bump * scale[1] + at[1], z * bump * scale[2] + at[2]);
   }
   return geometry;
@@ -114,10 +114,10 @@ export const ELBOW = Object.freeze(V(0.27, 0.035, LEDGE)); // where the near fro
 
 export function body() {
   const parts = [
-    gem([0.37, 0.165, 0.19], [-0.03, 0.155, 0.0], 1, 1),     // the long back
-    gem([0.19, 0.15, 0.145], [-0.25, 0.14, 0.1], 1, 2),      // the big hip, a facet ball of its own
+    gem([0.37, 0.165, 0.19], [-0.03, 0.155, 0.0], 0, 1),     // the long back, a few broad planes
+    gem([0.19, 0.15, 0.145], [-0.25, 0.14, 0.1], 0, 2),      // the big hip, a facet ball of its own
     gem([0.1, 0.045, 0.06], [-0.1, 0.045, 0.19], 0, 3),      // the hind paw, tucked forward
-    gem([0.15, 0.14, 0.15], [0.24, 0.14, 0.07], 1, 4),       // the chest and shoulder
+    gem([0.15, 0.14, 0.15], [0.24, 0.14, 0.07], 0, 4),       // the chest and shoulder
     prism(curve(V(0.3, 0.08, 0.0), V(0.45, 0.05, 0.03), V(0.56, 0.048, 0.06), 4), (s) => 0.058 - s * 0.012),
     gem([0.075, 0.042, 0.065], [0.59, 0.043, 0.065], 0, 5),  // the far front paw, the head lies on it
     prism(curve(V(0.24, 0.09, 0.14), V(0.255, 0.055, 0.26), ELBOW.clone(), 4), (s) => 0.058 - s * 0.012),
@@ -217,7 +217,7 @@ export function head() {
     snout,
     gem([0.034, 0.026, 0.03], [0, -0.068, 0.085], 0, 10),      // the chin
   ])));
-  group.add(furry(skull, { length: 0.006, density: 380 }));
+  group.add(furry(skull, { length: 0.004, density: 400 }));
   const irisMap = iris();
   const eyes = [eye(-1, irisMap), eye(1, irisMap)];
   const ears = [ear(-1), ear(1)];
@@ -253,5 +253,5 @@ export function tail(points) {
     geometry.computeBoundingSphere();
     fresh.dispose();
   };
-  return { mesh: furry(geometry, { length: 0.01, density: 300 }), reshape };
+  return { mesh: furry(geometry, { length: 0.006, density: 340 }), reshape };
 }

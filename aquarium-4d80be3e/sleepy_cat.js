@@ -11,7 +11,7 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const TILT = THREE.MathUtils.degToRad(14); // we look at the lid a little from above
 const EDGE = LEDGE;                         // the lid's front edge, from the middle of the cat
 const ABOVE = 0.84, BELOW = 0.6;            // how much of the world shows above and below that edge
-const CAT_SHARE = 0.36;                     // the cat's length (about 1.2) as a share of the lid's width, roughly
+const CAT_SHARE = 0.46;                     // the cat's length (about 1.2) as a share of the lid's width, roughly
 const BREATH = 3.8;                         // seconds a breath
 const LID_OPEN = 0.55;                      // how far back the lid rolls when the eye is wide open
 const NAP = [22, 38];                       // seconds asleep between wakings
@@ -19,9 +19,9 @@ const ease = (p) => p * p * (3 - 2 * p);
 const window01 = (p, from, to) => clamp((p - from) / (to - from), 0, 1);
 
 function lights(scene) {
-  scene.add(new THREE.HemisphereLight(0xfff6ea, 0x5d5c62, 1.15));
-  const key = new THREE.DirectionalLight(0xfff3e2, 2.3);
-  key.position.set(-1.6, 3.2, 2.6);
+  scene.add(new THREE.HemisphereLight(0xfff6ea, 0x4a4950, 0.55)); // little fill: each facet keeps its own light
+  const key = new THREE.DirectionalLight(0xfff3e2, 3.4);
+  key.position.set(-2.4, 2.6, 2.2);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
   Object.assign(key.shadow.camera, { left: -1.4, right: 1.4, top: 1.4, bottom: -1.4, near: 0.5, far: 8 });
@@ -29,7 +29,7 @@ function lights(scene) {
   key.shadow.radius = 4;
   const rim = new THREE.DirectionalLight(0xffffff, 1.5); // from behind: the fur's edge glows
   rim.position.set(1.6, 1.4, -2.4);
-  const fill = new THREE.DirectionalLight(0xdfe8ff, 0.45);
+  const fill = new THREE.DirectionalLight(0xdfe8ff, 0.3);
   fill.position.set(2.5, 0.6, 2);
   scene.add(key, rim, fill);
 }
@@ -58,7 +58,7 @@ function tailPath(t, flick) {
 function buildCat() {
   const cat = new THREE.Group();
   const chest = new THREE.Group(); // breathes
-  chest.add(furry(body(), { length: 0.016, density: 260 }));
+  chest.add(furry(body()));
   const neck = new THREE.Group();
   neck.position.set(0.3, 0.19, 0.08);
   const face = head();
@@ -69,7 +69,7 @@ function buildCat() {
   neck.add(holder);
   const paw = new THREE.Group(); // the forearm hanging over the edge swings from the elbow
   paw.position.copy(ELBOW);
-  paw.add(furry(forearm(), { length: 0.016, density: 260 }));
+  paw.add(furry(forearm()));
   const tailPart = tail(tailPath(0, 0));
   cat.add(chest, neck, paw, tailPart.mesh);
   return { cat, chest, neck, holder, face, paw, tailPart };
