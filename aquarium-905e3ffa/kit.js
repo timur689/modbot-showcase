@@ -2,7 +2,7 @@
 // numbers and a smooth noise, the shape of the bottom, tapered tubes and leaf ribbons, merged parts with painted
 // vertex colours, canvas textures, and the water current that sways whatever grows.
 
-import * as THREE from "../cat-b905f6b4/vendor/three.module.min.js";
+import * as THREE from "../cat-905e3ffa/vendor/three.module.min.js";
 
 export { THREE };
 

@@ -19,8 +19,8 @@ const ease = (p) => p * p * (3 - 2 * p);
 const window01 = (p, from, to) => clamp((p - from) / (to - from), 0, 1);
 
 function lights(scene) {
-  scene.add(new THREE.HemisphereLight(0xfff6ea, 0x5d5c62, 1.05)); // soft light for soft fur
-  const key = new THREE.DirectionalLight(0xfff3e2, 2.5);
+  scene.add(new THREE.HemisphereLight(0xfff6ea, 0x5d5c62, 0.95)); // soft light; enough of a key to show the hair
+  const key = new THREE.DirectionalLight(0xfff3e2, 2.8);
   key.position.set(-1.8, 3.0, 2.4);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
@@ -69,7 +69,7 @@ function buildCat() {
   neck.add(holder);
   const paw = new THREE.Group(); // the forearm hanging over the edge swings from the elbow
   paw.position.copy(ELBOW);
-  paw.add(furry(forearm()));
+  paw.add(furry(forearm(), { comb: [0, -1, 0.1] })); // down the leg
   const tailPart = tail(tailPath(0, 0));
   cat.add(chest, neck, paw, tailPart.mesh);
   return { cat, chest, neck, holder, face, paw, tailPart };
