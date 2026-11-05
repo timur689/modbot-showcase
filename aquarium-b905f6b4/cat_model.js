@@ -1,15 +1,15 @@
-// The cat on the aquarium, after the owner's reference figurine: a white cat cut in flat facets with sharp edges, a
-// pointed muzzle, angular cheeks and tall pyramid ears, its big hip a faceted ball of its own; covered in short, dense
-// fur that follows the facets, so the edges stay crisp. It lies on a ledge: the hind leg folded along its side, the
+// The cat on the aquarium, after the owner's reference figurine: a white cat of angular forms, a pointed muzzle,
+// angular cheeks and tall pyramid ears, its big hip a ball of its own; all of it, ears and tail too, under a long,
+// thick coat lit softly, so no facet shows. It lies on a ledge: the hind leg folded along its side, the
 // head resting on one front paw while the other hangs over the edge, the tail raised behind. Eyes behind lids
 // (green-gold, slit pupils), a small pink nose, whiskers.
 // The fur is made of shells: thin copies of the skin lifted along each facet, each keeping fewer hairs, darker at
-// the roots. Units: the cat is about 1.2 long; it lies on y = 0, its front towards +z, its head to the right.
+// the roots, a little heavier at the tips. Units: the cat is about 1.2 long; it lies on y = 0, its front towards +z, its head to the right.
 
-import { THREE, color, curve, merge, mix, noise, painted, tube } from "./kit.js";
+import { THREE, color, curve, merge, mix, noise, painted, smoothNormals, tube } from "./kit.js";
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-const SHELLS = 8;
+const SHELLS = 14;
 const FUR = Object.freeze({ white: "#f4f1ec", shade: "#ddd8d0", nose: "#e79aa4", ear: "#f0b3b9" });
 
 // ---- fur ----
@@ -23,25 +23,24 @@ function furPatch(shader, shell, length, density) {
     .replace("#include <begin_vertex>", `#include <begin_vertex>
       vBase = position;
       transformed += normalize(objectNormal) * uShell * uLength;
-      transformed.y -= uShell * uShell * uLength * 0.2;`);
+      transformed.y -= uShell * uShell * uLength * 0.3;`);
   shader.fragmentShader = shader.fragmentShader
     .replace("#include <common>", `#include <common>
       uniform float uShell; uniform float uDensity; varying vec3 vBase;
       float furHash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 45.164))) * 43758.5453); }`)
     .replace("#include <map_fragment>", `#include <map_fragment>
-      if (uShell > 0.0 && furHash(floor(vBase * uDensity)) < uShell * 0.85) discard;
-      diffuseColor.rgb *= mix(0.84, 1.03, uShell);`);
+      if (uShell > 0.0 && furHash(floor(vBase * uDensity)) < uShell * 0.9) discard;
+      diffuseColor.rgb *= mix(0.72, 1.04, uShell);`);
 }
 
-// The skin and its shells of fur, all sharing one geometry (so a moving tail moves its fur too). Each facet is lit
-// flat, as on the figurine.
-export function furry(geometry, { length = 0.006, density = 340 } = {}) {
+// The skin and its shells of fur, all sharing one geometry (so a moving tail moves its fur too), lit softly.
+export function furry(geometry, { length = 0.018, density = 240 } = {}) {
   const group = new THREE.Group();
   for (let k = 0; k <= SHELLS; k += 1) {
     const shell = k / SHELLS;
-    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true, envMapIntensity: 0.4 });
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, envMapIntensity: 0.4 });
     material.onBeforeCompile = (shader) => furPatch(shader, shell, length, density);
-    material.customProgramCacheKey = () => "fur-flat";
+    material.customProgramCacheKey = () => "fur";
     const layer = new THREE.Mesh(geometry, material);
     layer.castShadow = k === 0;
     layer.renderOrder = k;
@@ -52,29 +51,23 @@ export function furry(geometry, { length = 0.006, density = 340 } = {}) {
 
 // ---- facets ----
 
-// Flat facets: every triangle its own, its normal its own.
-const faceted = (geometry) => {
-  const flat = geometry.index ? geometry.toNonIndexed() : geometry;
-  flat.computeVertexNormals();
-  return flat;
-};
+// Soft: the normals of neighbouring facets averaged, so light (and fur) flows over the edges.
+const soft = (geometry) => smoothNormals(geometry.index ? geometry.toNonIndexed() : geometry);
 
-// White, every facet a touch warmer or greyer than its neighbours, the underside a little shaded.
+// White, a little creamier in places, the underside a little shaded.
 function coat(geometry) {
   const { position } = geometry.attributes;
   const colors = new Float32Array(position.count * 3);
-  for (let i = 0; i < position.count; i += 3) {
-    const cx = (position.getX(i) + position.getX(i + 1) + position.getX(i + 2)) / 3;
-    const cy = (position.getY(i) + position.getY(i + 1) + position.getY(i + 2)) / 3;
-    const cz = (position.getZ(i) + position.getZ(i + 1) + position.getZ(i + 2)) / 3;
-    const c = mix(color(FUR.white), color(FUR.shade), 0.15 + noise(cx * 23, cy * 23, cz * 23) * 0.2 + Math.max(0, 0.07 - cy) * 3);
-    for (let k = 0; k < 3; k += 1) colors.set([c.r, c.g, c.b], (i + k) * 3);
+  for (let i = 0; i < position.count; i += 1) {
+    const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
+    const c = mix(color(FUR.white), color(FUR.shade), 0.1 + noise(x * 9, y * 9, z * 9) * 0.12 + Math.max(0, 0.07 - y) * 3);
+    colors.set([c.r, c.g, c.b], i * 3);
   }
   geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   return geometry;
 }
 
-// A faceted lump: a coarse icosphere, a little irregular, stretched to `scale` and set at `at`.
+// An angular lump: a coarse icosphere, a little irregular, stretched to `scale` and set at `at`.
 function gem(scale, at, detail = 1, seed = 0) {
   const geometry = new THREE.IcosahedronGeometry(1, detail);
   const { position } = geometry.attributes;
@@ -86,7 +79,7 @@ function gem(scale, at, detail = 1, seed = 0) {
   return geometry;
 }
 
-// A faceted limb or tail: a tube of few sides and few joints.
+// A limb or tail: a tube of few sides and few joints.
 const prism = (points, radius, sides = 6) => tube(points, radius, sides);
 
 // A pyramid pointing along +y (ears, the nose).
@@ -122,13 +115,13 @@ export function body() {
     gem([0.075, 0.042, 0.065], [0.59, 0.043, 0.065], 0, 5),  // the far front paw, the head lies on it
     prism(curve(V(0.24, 0.09, 0.14), V(0.255, 0.055, 0.26), ELBOW.clone(), 4), (s) => 0.058 - s * 0.012),
   ];
-  return coat(faceted(flatten(merge(parts))));
+  return coat(soft(flatten(merge(parts))));
 }
 
-// The near forearm hanging over the edge, from the elbow (its pivot) down to a faceted paw.
+// The near forearm hanging over the edge, from the elbow (its pivot) down to its paw.
 export function forearm() {
   const limb = prism(curve(V(0, 0, 0), V(0.005, -0.09, 0.03), V(0.01, -0.165, 0.04), 4), (s) => 0.054 - s * 0.012);
-  return coat(faceted(merge([limb, gem([0.064, 0.07, 0.06], [0.013, -0.21, 0.052], 0, 6)])));
+  return coat(soft(merge([limb, gem([0.064, 0.07, 0.06], [0.013, -0.21, 0.052], 0, 6)])));
 }
 
 // ---- the head (built facing +z, centred at its own origin): sharp, angular ----
@@ -165,7 +158,7 @@ function eye(side, irisMap) {
   group.scale.set(1.25, 0.7, 0.7); // narrow, slanted
   const ball = new THREE.Mesh(new THREE.SphereGeometry(0.026, 24, 16), new THREE.MeshStandardMaterial({ map: irisMap, roughness: 0.05, envMapIntensity: 1.2 }));
   ball.rotation.y = -Math.PI / 2; // the sphere's texture centre looks forward
-  const lid = new THREE.Mesh(new THREE.SphereGeometry(0.0295, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: FUR.white, roughness: 0.9 }));
+  const lid = new THREE.Mesh(new THREE.SphereGeometry(0.0295, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: FUR.white, roughness: 0.95 }));
   const arc = Array.from({ length: 12 }, (_, k) => {
     const a = Math.PI * (0.12 + (k / 11) * 0.76);
     return V(-Math.cos(a) * 0.031, -Math.sin(a) * 0.006, Math.sin(a) * 0.031);
@@ -180,11 +173,10 @@ function ear(side) {
   const pivot = new THREE.Group();
   pivot.position.set(side * 0.07, 0.07, -0.012);
   pivot.rotation.set(-0.12, side * -0.3, side * -0.3);
-  const outer = new THREE.Mesh(coat(faceted(pyramid(0.065, 0.15, 4))), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, flatShading: true }));
+  const outer = furry(coat(soft(pyramid(0.065, 0.15, 4))), { length: 0.008, density: 300 }); // furry outside too
   outer.scale.z = 0.5;
   outer.rotation.y = Math.PI / 4;
-  outer.castShadow = true;
-  const inner = new THREE.Mesh(faceted(pyramid(0.045, 0.115, 4)), new THREE.MeshStandardMaterial({ color: FUR.ear, roughness: 0.7, flatShading: true }));
+  const inner = new THREE.Mesh(soft(pyramid(0.045, 0.115, 4)), new THREE.MeshStandardMaterial({ color: FUR.ear, roughness: 0.7 }));
   inner.scale.z = 0.3;
   inner.rotation.y = Math.PI / 4;
   inner.position.set(0, 0.008, 0.016);
@@ -210,18 +202,18 @@ export function head() {
   snout.rotateX(Math.PI / 2);
   snout.scale(1, 0.72, 1);
   snout.translate(0, -0.035, 0.075);
-  const skull = coat(faceted(merge([
+  const skull = coat(soft(merge([
     gem([0.125, 0.105, 0.115], [0, 0, 0], 1, 7),                // the skull, cut in broad facets
     gem([0.072, 0.058, 0.062], [-0.062, -0.035, 0.05], 0, 8),  // sharp cheekbones
     gem([0.072, 0.058, 0.062], [0.062, -0.035, 0.05], 0, 9),
     snout,
     gem([0.034, 0.026, 0.03], [0, -0.068, 0.085], 0, 10),      // the chin
   ])));
-  group.add(furry(skull, { length: 0.004, density: 400 }));
+  group.add(furry(skull, { length: 0.011, density: 300 }));
   const irisMap = iris();
   const eyes = [eye(-1, irisMap), eye(1, irisMap)];
   const ears = [ear(-1), ear(1)];
-  const nose = new THREE.Mesh(faceted(pyramid(0.016, 0.018, 3)), new THREE.MeshStandardMaterial({ color: FUR.nose, roughness: 0.4, flatShading: true }));
+  const nose = new THREE.Mesh(soft(pyramid(0.016, 0.018, 3)), new THREE.MeshStandardMaterial({ color: FUR.nose, roughness: 0.4 }));
   nose.rotation.x = Math.PI; // a little triangle pointing down
   nose.position.set(0, -0.012, 0.172);
   const mouth = new THREE.Group(); // only seen in a yawn: dark inside, a pink tongue
@@ -237,15 +229,15 @@ export function head() {
   return { group, eyes, ears, mouth };
 }
 
-// ---- the tail: a faceted band, its shape redrawn every frame from `points` ----
+// ---- the tail: a thick furry band, its shape redrawn every frame from `points` ----
 
-const TAIL_SIDES = 6;
+const TAIL_SIDES = 10;
 const tailRadius = (s) => 0.048 - s * 0.014;
 
 export function tail(points) {
-  const geometry = coat(faceted(prism(points, tailRadius, TAIL_SIDES)));
+  const geometry = coat(soft(prism(points, tailRadius, TAIL_SIDES)));
   const reshape = (next) => {
-    const fresh = faceted(prism(next, tailRadius, TAIL_SIDES));
+    const fresh = soft(prism(next, tailRadius, TAIL_SIDES));
     geometry.attributes.position.array.set(fresh.attributes.position.array);
     geometry.attributes.normal.array.set(fresh.attributes.normal.array);
     geometry.attributes.position.needsUpdate = true;
@@ -253,5 +245,5 @@ export function tail(points) {
     geometry.computeBoundingSphere();
     fresh.dispose();
   };
-  return { mesh: furry(geometry, { length: 0.006, density: 340 }), reshape };
+  return { mesh: furry(geometry, { length: 0.02, density: 220 }), reshape };
 }

@@ -19,9 +19,9 @@ const ease = (p) => p * p * (3 - 2 * p);
 const window01 = (p, from, to) => clamp((p - from) / (to - from), 0, 1);
 
 function lights(scene) {
-  scene.add(new THREE.HemisphereLight(0xfff6ea, 0x4a4950, 0.55)); // little fill: each facet keeps its own light
-  const key = new THREE.DirectionalLight(0xfff3e2, 3.4);
-  key.position.set(-2.4, 2.6, 2.2);
+  scene.add(new THREE.HemisphereLight(0xfff6ea, 0x5d5c62, 1.05)); // soft light for soft fur
+  const key = new THREE.DirectionalLight(0xfff3e2, 2.5);
+  key.position.set(-1.8, 3.0, 2.4);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
   Object.assign(key.shadow.camera, { left: -1.4, right: 1.4, top: 1.4, bottom: -1.4, near: 0.5, far: 8 });
@@ -29,7 +29,7 @@ function lights(scene) {
   key.shadow.radius = 4;
   const rim = new THREE.DirectionalLight(0xffffff, 1.5); // from behind: the fur's edge glows
   rim.position.set(1.6, 1.4, -2.4);
-  const fill = new THREE.DirectionalLight(0xdfe8ff, 0.3);
+  const fill = new THREE.DirectionalLight(0xdfe8ff, 0.45);
   fill.position.set(2.5, 0.6, 2);
   scene.add(key, rim, fill);
 }
@@ -52,7 +52,7 @@ function tailPath(t, flick) {
     V(-0.4, 0.15, -0.05), V(-0.5, 0.19, -0.07), V(-0.56, 0.3, -0.08 + sway * 0.3),
     V(-0.555 + sway * 0.4, 0.43, -0.07 + sway * 0.6), V(-0.5 + sway, 0.53 + nod, -0.05 + sway),
     V(-0.42 + sway * 1.3 + flick * 0.05, 0.56 + nod - flick * 0.05, -0.03 + sway * 1.2 + flick * 0.04),
-  ]).getPoints(9); // few joints: a faceted tail
+  ]).getPoints(16);
 }
 
 function buildCat() {
