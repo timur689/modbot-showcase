@@ -1,6 +1,8 @@
 // The tank's decorations in 3D: a sandstone castle with lit windows and a flag, a treasure chest that opens now
 // and then, a branching coral and a sea fan, an anemone, a starfish, and the airstone with its stream of bubbles.
 
+import { AIRSTONE } from "./equipment.js";
+import { halo } from "./water.js";
 import { SURFACE } from "./world.js";
 import { THREE, color, curve, floorAt, leafy, merge, mix, paint, painted, rand, solid, standard, swayByHeight, swaying, tube } from "./kit.js";
 
@@ -81,10 +83,13 @@ function castle(world) {
 
   const glass = standard({ color: "#ffb54d", emissive: "#ff9a2e", emissiveIntensity: 1, roughness: 0.4 });
   const dark = standard({ color: "#2a1c10", roughness: 1 });
-  [[parts[0], 1.05], [parts[1], 1.05], [parts[2], 1.75]].forEach(([{ x, z, r }, y]) => {
+  const halos = [[parts[0], 1.05], [parts[1], 1.05], [parts[2], 1.75]].map(([{ x, z, r }, y]) => {
     const pane = new THREE.Mesh(windowShape(0.16, 0.26), glass);
     pane.position.set(x, y, z + r * 1.07);
-    group.add(pane);
+    const glow = halo("#ffa040", 0.75);
+    glow.position.set(x, y + 0.12, z + r * 1.07 + 0.05);
+    group.add(pane, glow);
+    return glow;
   });
   const door = new THREE.Mesh(windowShape(0.34, 0.5), dark);
   door.position.set(0, 0, 0.31);
@@ -116,6 +121,7 @@ function castle(world) {
     const flicker = 1 + Math.sin(t * 7) * 0.05 + Math.sin(t * 13) * 0.04;
     glass.emissiveIntensity = (0.15 + world.light.emit) * flicker;
     glow.intensity = world.light.emit * 3.5 * flicker;
+    halos.forEach((light) => { light.material.opacity = Math.min(1, world.light.emit * 0.4) * flicker; });
   });
 }
 
@@ -124,14 +130,22 @@ function chest(world, bubbles) {
   const wood = standard({ map: planks(), bumpMap: planks(), roughness: 0.75 });
   const iron = standard({ color: "#8d939a", metalness: 0.85, roughness: 0.35 });
   const gold = standard({ color: "#ffc94a", metalness: 1, roughness: 0.25, emissive: "#6a4300", emissiveIntensity: 0.3 });
-  const body = solid(new THREE.BoxGeometry(0.9, 0.42, 0.55), wood);
-  body.position.y = 0.21;
-  group.add(body);
-  [-0.3, 0.3].forEach((x) => {
-    const band = solid(new THREE.BoxGeometry(0.07, 0.43, 0.56), iron);
-    band.position.set(x, 0.21, 0);
+  const inside = standard({ color: "#3a2210", roughness: 0.9 });
+  // An open box: a floor and four walls, so the hoard inside shows when the lid lifts.
+  [[0.9, 0.04, 0.55, 0, 0.02, 0], [0.9, 0.42, 0.04, 0, 0.21, 0.255], [0.9, 0.42, 0.04, 0, 0.21, -0.255], [0.04, 0.42, 0.47, 0.43, 0.21, 0], [0.04, 0.42, 0.47, -0.43, 0.21, 0]]
+    .forEach(([w, h, d, x, y, z]) => {
+      const wall = solid(new THREE.BoxGeometry(w, h, d), wood);
+      wall.position.set(x, y, z);
+      group.add(wall);
+    });
+  const depth = solid(new THREE.BoxGeometry(0.82, 0.02, 0.47), inside);
+  depth.position.y = 0.3;
+  group.add(depth);
+  [-0.3, 0.3].forEach((x) => [0.28, -0.28].forEach((z) => { // iron bands down the front and the back
+    const band = solid(new THREE.BoxGeometry(0.07, 0.43, 0.012), iron);
+    band.position.set(x, 0.21, z);
     group.add(band);
-  });
+  }));
   const hoard = solid(merge([
     (() => { const g = new THREE.SphereGeometry(0.4, 20, 8, 0, Math.PI * 2, 0, 1.1); g.scale(1, 0.35, 0.6); return g; })(),
     ...Array.from({ length: 9 }, () => {
@@ -149,7 +163,7 @@ function chest(world, bubbles) {
   });
   group.add(hoard, ...gems);
   const lock = solid(new THREE.BoxGeometry(0.13, 0.15, 0.03), gold);
-  lock.position.set(0, 0.32, 0.285);
+  lock.position.set(0, 0.32, 0.29);
   group.add(lock);
 
   const hinge = new THREE.Group();
@@ -158,6 +172,8 @@ function chest(world, bubbles) {
   lidShape.rotateZ(Math.PI / 2); // the curved half on top, its axis along the chest
   const lid = solid(lidShape, wood);
   lid.position.z = 0.275;
+  const lining = solid(lidShape, standard({ color: "#3a2210", roughness: 0.9, side: THREE.BackSide })); // the lid's inside
+  lining.position.z = 0.275;
   const lidBands = [-0.3, 0.3].map((x) => {
     const g = new THREE.CylinderGeometry(0.28, 0.28, 0.07, 24, 1, false, 0, Math.PI);
     g.rotateZ(Math.PI / 2);
@@ -165,7 +181,7 @@ function chest(world, bubbles) {
     band.position.set(x, 0, 0.275);
     return band;
   });
-  hinge.add(lid, ...lidBands);
+  hinge.add(lid, lining, ...lidBands);
   group.add(hinge);
 
   const x = -3.5, z = 0.75;
@@ -314,7 +330,7 @@ function bubblePool(world, count = 40) {
 }
 
 function airstone(world, bubbles) {
-  const x = -0.55, z = 0.25;
+  const { x, z } = AIRSTONE;
   const stone = solid(paint(new THREE.SphereGeometry(0.16, 16, 10), (px, py) => mix(color("#5a626b"), color("#c3cad2"), py * 3 + 0.5)), standard({ vertexColors: true, roughness: 0.9 }));
   stone.scale.set(1.2, 0.45, 1);
   stone.position.set(x, floorAt(x, z) + 0.04, z);

@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="aquarium-ccdb92a4/aquarium.css">
+  <link rel="stylesheet" href="aquarium-c79fd327/aquarium.css">
   <style>
     :root {
       --bg: #ebeae7; --surface: #f0efec; --ink: #1d1d1f; --hint: #6e6e73; --accent: #2f6fe0;
@@ -190,7 +190,7 @@
       let aquarium = null;
       async function fillTank() {
         try {
-          const { buildAquarium } = await import("./aquarium-ccdb92a4/main.js");
+          const { buildAquarium } = await import("./aquarium-c79fd327/main.js");
           aquarium = buildAquarium(document.querySelector(".scene"), document.getElementById("tune"));
         } catch (error) {
           console.warn("showcase: no aquarium", error); // the empty tank and the words still show
@@ -202,7 +202,7 @@
       async function bringCat() {
         const box = document.getElementById("cat3d");
         try {
-          const { createAvatar } = await import("./cat-ccdb92a4/avatar3d.js");
+          const { createAvatar } = await import("./cat-c79fd327/avatar3d.js");
           const cat = createAvatar(box);
           cat.wear("snorkel");
           setInterval(() => {

@@ -21,16 +21,21 @@ const grain = () => painted(256, 256, (ctx, w, h) => {
   }
 }, { repeat: [16, 6] });
 
+const FRONT_EDGE = 2.05;
+
 function floorMesh() {
-  const geometry = new THREE.PlaneGeometry(26, 10, 180, 70);
+  const geometry = new THREE.PlaneGeometry(26, 8.7, 180, 62);
   geometry.rotateX(-Math.PI / 2);
-  geometry.translate(0, 0, -1.6);
+  geometry.translate(0, 0, -2.25); // ends at the front glass, where the substrate's side shows (aquarium.css)
   const texture = grain();
   const mesh = solid(geometry, standard({ vertexColors: true, map: texture, bumpMap: texture, bumpScale: 1.4, roughness: 0.96 }), { cast: false });
   const shape = (kind) => {
     const { position } = geometry.attributes;
     const ground = GROUNDS[kind];
-    for (let i = 0; i < position.count; i += 1) position.setY(i, floorAt(position.getX(i), position.getZ(i), ground.ripple));
+    for (let i = 0; i < position.count; i += 1) { // the front row drops straight down: the ground's side behind the glass
+      const x = position.getX(i), z = position.getZ(i);
+      position.setY(i, z > FRONT_EDGE ? -2 : floorAt(x, z, ground.ripple));
+    }
     position.needsUpdate = true;
     geometry.computeVertexNormals();
     const [light, middle, dark] = ground.colors.map(color);
@@ -50,7 +55,7 @@ function pebbles(kind) {
   mesh.castShadow = mesh.receiveShadow = true;
   const place = new THREE.Object3D();
   for (let k = 0; k < ground.count; k += 1) {
-    const size = rand(...ground.size), x = rand(-6, 6), z = rand(-2.6, 2.4);
+    const size = rand(...ground.size), x = rand(-6, 6), z = rand(-2.6, 1.95);
     place.position.set(x, floorAt(x, z) + size * 0.15, z);
     place.scale.set(size, size * rand(0.5, 0.75), size * rand(0.7, 1));
     place.rotation.set(rand(-0.2, 0.2), rand(0, Math.PI), rand(-0.2, 0.2));
@@ -165,7 +170,7 @@ const SHELLS = {
 };
 
 function shells() {
-  return [[-2.5, 2.05, "scallop"], [2.1, 1.85, "cowrie"], [3.0, 0.9, "spiral"], [-0.8, 2.1, "scallop"]].map(([x, z, kind]) => {
+  return [[-2.5, 1.92, "scallop"], [2.1, 1.85, "cowrie"], [3.0, 0.9, "spiral"], [-0.8, 1.95, "scallop"]].map(([x, z, kind]) => {
     const { geometry, rough } = SHELLS[kind]();
     const shell = solid(geometry, standard({ vertexColors: true, roughness: rough }));
     const dx = rand(-0.2, 0.2);

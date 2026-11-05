@@ -87,7 +87,7 @@ export function growPlants(world) {
   }
   [[rand(-3.4, -3), -1.3], [rand(3.4, 3.8), -1.1]].forEach(([x, z]) => garden.add(PLANTS.fern(x, z)));
   [[rand(-1.9, -1.6), 0.7], [rand(3.5, 3.8), 1.3]].forEach(([x, z]) => garden.add(PLANTS.sword(x, z)));
-  for (let x = -5.6; x < 5.8; x += rand(1.1, 1.6)) garden.add(PLANTS.carpet(x, rand(1.9, 2.3), rand(0.8, 1.3)));
+  for (let x = -5.6; x < 5.8; x += rand(1.1, 1.6)) garden.add(PLANTS.carpet(x, rand(1.55, 1.8), rand(0.8, 1.3)));
   world.add(garden);
   return garden;
 }

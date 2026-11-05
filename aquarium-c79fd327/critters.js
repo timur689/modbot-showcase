@@ -2,6 +2,7 @@
 // sideways along the front, a shrimp hopping about, and a snail crawling up and down the driftwood.
 
 import { TRUNK } from "./ground.js";
+import { halo } from "./water.js";
 import { THREE, color, curve, floorAt, merge, mix, paint, solid, standard, tube } from "./kit.js";
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -32,7 +33,9 @@ function jelly(world) {
   tentacles.frustumCulled = false;
   const glow = new THREE.PointLight("#ff8cf0", 0, 2.6, 1.5);
   glow.position.y = 0.2;
-  group.add(bell, arms, tentacles, glow);
+  const aura = halo("#ff8cf0", 1.5);
+  aura.position.y = 0.15;
+  group.add(bell, arms, tentacles, glow, aura);
   world.add(group);
 
   let height = 4.6;
@@ -59,6 +62,7 @@ function jelly(world) {
     skin.emissiveIntensity = 0.15 + night * 0.9;
     core.emissiveIntensity = 0.3 + night * 1.6;
     glow.intensity = night * 2.6;
+    aura.material.opacity = 0.1 + night * 0.5;
   });
 }
 

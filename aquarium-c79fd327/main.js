@@ -4,16 +4,18 @@
 
 import { releaseCritters } from "./critters.js";
 import { placeDecor } from "./decor.js";
+import { installEquipment } from "./equipment.js";
 import { releaseFish } from "./fish.js";
 import { layBottom } from "./ground.js";
 import { growFloaters, growPlants } from "./plants.js";
 import { setUpTuning } from "./tune.js";
+import { lightShafts, waterSurface } from "./water.js";
 import { createWorld } from "./world.js";
 
-// Light and glass in front of the world: rays from the lamp, its tint and glow, darker corners, the surface, the pane.
-const RAYS = [[26, -18, 34, -1], [38, -8, 46, -4], [50, 1, 52, -2], [62, 9, 40, -6], [74, 18, 32, -3]]
-  .map(([x, angle, width, delay]) => `<i style="--x:${x}%; --a:${angle}deg; --w:${width}px; --d:${delay}s"></i>`).join("");
-const OVERLAY = `<div class="rays">${RAYS}</div><div class="wash"></div><div class="lampglow"></div><div class="vignette"></div><div class="surface"></div><div class="glass"></div>`;
+// In front of the world: the substrate's side against the glass, the air above the water with drops on the glass,
+// the lamp's tint and glow, darker corners, the waterline, the front pane and the glass edges with their seams.
+const OVERLAY = `<div class="substrate"></div><div class="air"></div><div class="wash"></div><div class="lampglow"></div>
+<div class="vignette"></div><div class="surface"></div><div class="glass"></div><div class="edges"></div>`;
 
 export function buildAquarium(scene, panel) {
   const tank = scene.querySelector(".tank");
@@ -39,6 +41,9 @@ export function buildAquarium(scene, panel) {
   });
   bottom = layBottom(world, tuning.ground());
   placeDecor(world);
+  installEquipment(world);
+  waterSurface(world);
+  lightShafts(world);
   garden = growPlants(world);
   growFloaters(world);
   releaseCritters(world);

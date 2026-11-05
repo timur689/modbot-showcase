@@ -1,10 +1,11 @@
 // The tank's 3D world: a canvas filling the tank, a camera looking in through the front glass, the lamp in the lid
-// (a spotlight throwing dancing caustics and shadows), the water's colour and haze in each mood of light, and the
-// frame loop everything living hooks into.
+// (a spotlight throwing dancing caustics and shadows, brighter near the top than at the bottom), a light from behind
+// that outlines everything, reflections of the lit tank on whatever is glossy, the water's colour and haze in each
+// mood of light, and the frame loop everything living hooks into.
 
-import { THREE, clamp, mix, painted, setClock } from "./kit.js";
+import { THREE, clamp, mix, paint, painted, setClock } from "./kit.js";
 
-export const SURFACE = 6.85; // the water's surface, in the world's units (the tank's front is 7 high)
+export const SURFACE = 6.68; // the water's surface, in the world's units (the tank's front is 7 high; air above it)
 const VIEW_HEIGHT = 7;       // how much of the front glass the camera fits in, top to bottom
 const FRONT = 2;             // where the front glass stands
 const FOV = 34;
@@ -14,20 +15,21 @@ const SETTLE = 2.6;          // how fast a change of light flows (per second)
 // The moods, in step with aquarium.css: the water's colours there, and how the lamp and the room light the world.
 const MOODS = {
   evening: {
-    top: "#a8dccc", mid: "#3f9aa6", bottom: "#1b5468", lamp: "#ffd29a", sky: "#ffe2b8", floor: "#2d5458", fill: "#ffe7c4",
-    power: 3.2, hemi: 1.35, front: 0.55, emit: 1, night: 0.15,
+    top: "#a8dccc", mid: "#3f9aa6", bottom: "#1b5468", lamp: "#ffd29a", sky: "#ffe2b8", floor: "#2d5458", fill: "#ffe7c4", rim: "#ffcf96",
+    power: 3.4, hemi: 0.75, front: 0.45, back: 1.1, shafts: 0.42, emit: 1, night: 0.15,
   },
   day: {
-    top: "#b8ecf7", mid: "#56b3dc", bottom: "#22689e", lamp: "#ffffff", sky: "#eaf7ff", floor: "#2c5878", fill: "#ffffff",
-    power: 3.6, hemi: 1.55, front: 0.6, emit: 0, night: 0,
+    top: "#b8ecf7", mid: "#56b3dc", bottom: "#22689e", lamp: "#ffffff", sky: "#eaf7ff", floor: "#2c5878", fill: "#ffffff", rim: "#e8f6ff",
+    power: 3.8, hemi: 0.85, front: 0.5, back: 1.2, shafts: 0.34, emit: 0, night: 0,
   },
   night: {
-    top: "#24496e", mid: "#142d4c", bottom: "#08142a", lamp: "#9fb4ff", sky: "#6c7cc0", floor: "#0a1430", fill: "#7f8fd0",
-    power: 0.95, hemi: 0.42, front: 0.2, emit: 1.8, night: 1,
+    top: "#24496e", mid: "#142d4c", bottom: "#08142a", lamp: "#9fb4ff", sky: "#6c7cc0", floor: "#0a1430", fill: "#7f8fd0", rim: "#8aa2ff",
+    power: 1.0, hemi: 0.22, front: 0.16, back: 0.7, shafts: 0.16, emit: 1.8, night: 1,
   },
 };
-const COLOURS = ["top", "mid", "bottom", "lamp", "sky", "floor", "fill"];
-const NUMBERS = ["power", "hemi", "front", "emit", "night"];
+const COLOURS = ["top", "mid", "bottom", "lamp", "sky", "floor", "fill", "rim"];
+const NUMBERS = ["power", "hemi", "front", "back", "shafts", "emit", "night"];
+const LAMP_REACH = 14; // the lamp fades with distance: this much power keeps the bottom as bright as before
 
 const moodValues = (name) => {
   const mood = MOODS[name] || MOODS.evening;
@@ -102,21 +104,44 @@ function backdrop() {
   return { mesh, paint };
 }
 
+// What glossy things reflect: the tank around them, water-coloured, bright above where the lamp hangs, dark below.
+function environment(renderer, scene) {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const room = new THREE.Scene();
+  const shell = new THREE.SphereGeometry(10, 32, 16);
+  room.add(new THREE.Mesh(shell, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+  const tube = new THREE.Mesh(new THREE.PlaneGeometry(9, 1.4), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+  tube.position.y = 9;
+  tube.rotation.x = Math.PI / 2;
+  room.add(tube);
+  let texture = null;
+  return (light) => {
+    paint(shell, (x, y) => (y > 0 ? mix(light.mid, light.sky, y / 10) : mix(light.mid, light.floor, -y / 10)));
+    tube.material.color.copy(light.lamp).multiplyScalar(light.power * 1.4);
+    const next = pmrem.fromScene(room, 0.03).texture;
+    scene.environment = next;
+    if (texture) texture.dispose();
+    texture = next;
+  };
+}
+
 function lights(scene) {
   const hemi = new THREE.HemisphereLight(0xffffff, 0x224444, 1);
   const front = new THREE.DirectionalLight(0xffffff, 0.5);
   front.position.set(-2, 4, 12);
-  const lamp = new THREE.SpotLight(0xffffff, 3, 0, 0.62, 0.55, 0);
+  const back = new THREE.DirectionalLight(0xffffff, 1); // from behind and above: bright outlines on fins, leaves, rocks
+  back.position.set(1.5, 9, -12);
+  const lamp = new THREE.SpotLight(0xffffff, 3, 0, 0.62, 0.55, 1);
   lamp.position.set(0.6, 15, 2.2);
   lamp.target.position.set(0, 0, -0.6);
   lamp.castShadow = true;
-  lamp.shadow.mapSize.set(1024, 1024);
+  lamp.shadow.mapSize.set(2048, 2048);
   lamp.shadow.camera.near = 6;
   lamp.shadow.camera.far = 24;
   lamp.shadow.bias = -0.0004;
   lamp.shadow.normalBias = 0.025;
-  scene.add(hemi, front, lamp, lamp.target);
-  return { hemi, front, lamp };
+  scene.add(hemi, front, back, lamp, lamp.target);
+  return { hemi, front, back, lamp };
 }
 
 export function createWorld(tank) {
@@ -137,6 +162,7 @@ export function createWorld(tank) {
   const far = backdrop();
   const lit = lights(scene);
   const net = caustics();
+  const reflect = environment(renderer, scene);
   lit.lamp.map = net.texture;
   scene.add(far.mesh);
   scene.fog = new THREE.Fog(0x3f9aa6, 11, 23);
@@ -151,8 +177,10 @@ export function createWorld(tank) {
     lit.hemi.intensity = light.hemi;
     lit.front.color.copy(light.fill);
     lit.front.intensity = light.front;
+    lit.back.color.copy(light.rim);
+    lit.back.intensity = light.back;
     lit.lamp.color.copy(light.lamp);
-    lit.lamp.intensity = light.power;
+    lit.lamp.intensity = light.power * LAMP_REACH;
   };
   const settle = (dt) => {
     const k = 1 - Math.exp(-dt * SETTLE);
@@ -198,6 +226,7 @@ export function createWorld(tank) {
     every: (hook) => hooks.push(hook),
     mood(name, instant = still) {
       target = moodValues(name);
+      reflect(target);
       if (instant) {
         light = target;
         apply();
