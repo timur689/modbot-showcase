@@ -1,8 +1,9 @@
-// A real-looking white cat, curled up asleep: a long body lying on its side, the hind leg folded under the hip,
-// the front paws stretched out with the chin resting on them, a round head with full cheeks, a short muzzle, a pink
-// nose, big ears pink inside, whiskers, eyes behind lids (green-gold, slit pupils), and the tail. The fur is made of
-// shells: thin copies of the skin lifted along its normals, each one keeping fewer hairs, darker at the roots.
-// Units: about a metre-ish cat 1.2 long; it lies on y = 0, its front towards +z, its head to the left.
+// A real-looking white cat asleep on a ledge, after the owner's reference figurine: a long body, the hind leg folded
+// along its side, the head resting on one front paw while the other hangs over the edge, the tail raised behind.
+// A round head with full cheeks, a short muzzle, a pink nose and a little smile, big ears pink inside, whiskers,
+// eyes behind lids (green-gold, slit pupils). The fur is made of shells: thin copies of the skin lifted along its
+// normals, each one keeping fewer hairs, darker at the roots.
+// Units: the cat is about 1.2 long; it lies on y = 0, its front towards +z, its head to the right.
 
 import { THREE, color, curve, merge, mix, noise, paint, painted, smoothNormals, tube } from "./kit.js";
 
@@ -70,23 +71,33 @@ function flatten(geometry, floor = 0.05) {
   return smoothNormals(geometry);
 }
 
-// ---- the body: back, hip, folded hind leg, chest, front legs and paws ----
+// ---- the body, lying on a ledge as in the owner's reference: rump and tail to the left, head to the right on
+// its far paw, the hind leg folded along the side, the near front leg reaching over the ledge's edge ----
+
+export const LEDGE = 0.34; // the ledge's front edge, from the middle of the cat
+export const ELBOW = Object.freeze(V(0.27, 0.035, LEDGE)); // where the near front leg bends down over the edge
 
 export function body() {
-  const spine = new THREE.CatmullRomCurve3([V(-0.32, 0.15, 0.07), V(-0.08, 0.175, -0.03), V(0.2, 0.175, -0.02), V(0.38, 0.15, 0.05)]).getPoints(22);
-  const torso = tube(spine, (s) => 0.14 + 0.02 * Math.sin(Math.PI * s) + 0.032 * Math.exp(-(((s - 0.78) / 0.15) ** 2)), 22);
+  const spine = new THREE.CatmullRomCurve3([V(-0.34, 0.15, 0.0), V(-0.12, 0.175, -0.03), V(0.14, 0.17, 0.0), V(0.3, 0.14, 0.06)]).getPoints(22);
+  const torso = tube(spine, (s) => 0.14 + 0.02 * Math.sin(Math.PI * s) + 0.03 * Math.exp(-(((s - 0.2) / 0.15) ** 2)), 22);
   const leg = (from, via, to) => tube(curve(V(...from), V(...via), V(...to), 10), (s) => 0.058 - s * 0.012, 12);
   const parts = [
     torso,
-    blob(1, [0.18, 0.14, 0.13], [0.25, 0.14, 0.11]),       // the hip with the thigh folded under it
-    blob(1, [0.1, 0.045, 0.06], [0.13, 0.04, 0.18]),       // the hind paw, tucked forward under the hip
-    blob(1, [0.15, 0.14, 0.15], [-0.28, 0.14, 0.07]),      // the chest and shoulder
-    leg([-0.3, 0.09, 0.14], [-0.42, 0.055, 0.19], [-0.53, 0.05, 0.17]),
-    blob(1, [0.078, 0.044, 0.066], [-0.57, 0.044, 0.165]), // front paws
-    leg([-0.3, 0.08, 0.02], [-0.44, 0.05, 0.05], [-0.52, 0.048, 0.04]),
-    blob(1, [0.074, 0.042, 0.064], [-0.56, 0.042, 0.04]),
+    blob(1, [0.17, 0.14, 0.13], [-0.25, 0.14, 0.1]),      // the hip, the thigh folded along the side
+    blob(1, [0.1, 0.045, 0.06], [-0.1, 0.04, 0.19]),      // the hind paw, tucked forward under it
+    blob(1, [0.14, 0.135, 0.15], [0.25, 0.135, 0.07]),    // the chest and shoulder
+    leg([0.3, 0.08, 0.0], [0.45, 0.05, 0.03], [0.56, 0.048, 0.06]), // the far front leg, the head lies on it
+    blob(1, [0.075, 0.042, 0.065], [0.59, 0.043, 0.065]),
+    leg([0.24, 0.09, 0.14], [0.255, 0.055, 0.26], ELBOW.toArray()), // the near one, to the edge
   ];
   return coat(flatten(merge(parts)));
+}
+
+// The near forearm hanging over the edge, from the elbow (its pivot) down to a soft round paw with toes.
+export function forearm() {
+  const limb = tube(curve(V(0, 0, 0), V(0.005, -0.09, 0.03), V(0.01, -0.165, 0.04), 10), (s) => 0.054 - s * 0.012, 12);
+  const toes = [-0.03, 0, 0.03].map((x) => blob(1, [0.025, 0.025, 0.023], [0.013 + x, -0.245, 0.078]));
+  return coat(merge([limb, blob(1, [0.064, 0.068, 0.06], [0.013, -0.21, 0.052]), ...toes]));
 }
 
 // ---- the head (built facing +z, centred at its own origin) ----
@@ -181,7 +192,9 @@ export function head() {
   tongue.position.set(0, -0.015, 0.01);
   mouth.add(inside, tongue);
   mouth.scale.set(1, 0.001, 1);
-  group.add(...eyes.map((e) => e.group), ...ears, nose, mouth, whiskers());
+  const lips = new THREE.Mesh(merge([-1, 1].map((side) => tube(curve(V(0, -0.033, 0.152), V(side * 0.014, -0.05, 0.151), V(side * 0.032, -0.042, 0.145), 8), () => 0.0032, 5))),
+    new THREE.MeshStandardMaterial({ color: "#7a5a5c", roughness: 0.6 })); // a contented little smile
+  group.add(...eyes.map((e) => e.group), ...ears, nose, mouth, lips, whiskers());
   return { group, eyes, ears, mouth };
 }
 
