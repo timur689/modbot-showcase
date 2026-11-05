@@ -14,6 +14,7 @@ const M = {
   shadedFur: new THREE.MeshStandardMaterial({ color: 0xf4f6f9, roughness: 0.8, emissive: 0x1d2026, vertexColors: true }),
   bead: new THREE.MeshStandardMaterial({ color: 0x16171a, roughness: 0.12, metalness: 0.1 }),
   shine: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 }),
+  mouth: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, side: THREE.DoubleSide }), // inside, coloured per point
 };
 
 const part = (geometry, material, x = 0, y = 0, z = 0) => {
@@ -78,14 +79,66 @@ function eye(side) {
 }
 
 // The little "w" mouth: a soft black line running along the face.
+const MOUTH_LINE = [[-0.135, 0.43], [-0.095, 0.4], [-0.05, 0.395], [-0.015, 0.425], [0, 0.428], [0.015, 0.425], [0.05, 0.395], [0.095, 0.4], [0.135, 0.43]];
+
 function mouth() {
-  const points = [[-0.135, 0.43], [-0.095, 0.4], [-0.05, 0.395], [-0.015, 0.425], [0, 0.428], [0.015, 0.425], [0.05, 0.395], [0.095, 0.4], [0.135, 0.43]]
+  const points = MOUTH_LINE
     .map(([x, y]) => new THREE.Vector3(x, y, faceZ(x, y) + 0.014)); // raised a little above the face
   const path = new THREE.CatmullRomCurve3(points);
   const group = new THREE.Group();
   group.add(part(new THREE.TubeGeometry(path, 64, 0.02, 12), M.bead));
   for (const end of [0, 1]) group.add(part(new THREE.SphereGeometry(0.02, 12, 10), M.bead, ...path.getPoint(end).toArray()));
   return group;
+}
+
+// The open mouth it talks with, cut along the "w" line: the line is its upper lip, its corners are the line's ends,
+// and below it the mouth drops open, dark inside with a pink tongue at the bottom, as far as the talk level says
+// (open(0..1)); every point stays on the face. Shut, it is hidden.
+const MOUTH_DEPTH = 0.15; // how far down it opens, wide open, in head units
+const MOUTH_COLS = 40, MOUTH_ROWS = 8;
+const MOUTH_INSIDE = new THREE.Color(0x5e1a28), MOUTH_TONGUE = new THREE.Color(0xff8aa0);
+
+function talkingMouth() {
+  const line = new THREE.CatmullRomCurve3(MOUTH_LINE.map(([x, y]) => new THREE.Vector3(x, y, 0)));
+  const lip = line.getPoints(MOUTH_COLS).map((point) => [point.x, point.y - 0.008]); // the line hides the seam
+  const count = (MOUTH_COLS + 1) * (MOUTH_ROWS + 1);
+  const positions = new Float32Array(count * 3), normals = new Float32Array(count * 3), colors = new Float32Array(count * 3);
+  const index = [], color = new THREE.Color();
+  for (let row = 0; row <= MOUTH_ROWS; row += 1) {
+    for (let col = 0; col <= MOUTH_COLS; col += 1) {
+      const i = row * (MOUTH_COLS + 1) + col, middle = 1 - Math.abs((2 * col) / MOUTH_COLS - 1);
+      normals[i * 3 + 2] = 1;
+      color.copy(MOUTH_INSIDE).lerp(MOUTH_TONGUE, smoothstep(0.5, 0.95, row / MOUTH_ROWS) * smoothstep(0.25, 0.75, middle));
+      color.toArray(colors, i * 3);
+      if (row < MOUTH_ROWS && col < MOUTH_COLS) {
+        const below = i + MOUTH_COLS + 1;
+        index.push(i, below, i + 1, i + 1, below, below + 1);
+      }
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  geometry.setIndex(index);
+  const mesh = new THREE.Mesh(geometry, M.mouth);
+  mesh.visible = false;
+  mesh.frustumCulled = false; // its points move every frame
+
+  function open(level) {
+    mesh.visible = level > 0.03;
+    if (!mesh.visible) return;
+    for (let row = 0; row <= MOUTH_ROWS; row += 1) {
+      for (let col = 0; col <= MOUTH_COLS; col += 1) {
+        const [x, top] = lip[col], i = row * (MOUTH_COLS + 1) + col;
+        const y = top - MOUTH_DEPTH * level * Math.pow(Math.sin((Math.PI * col) / MOUTH_COLS), 0.6) * (row / MOUTH_ROWS);
+        positions.set([x, y, faceZ(x, y) + 0.006], i * 3); // on the face, under the line
+      }
+    }
+    geometry.attributes.position.needsUpdate = true;
+  }
+
+  return { mesh, open };
 }
 
 // A big soft pointed ear on its own pivot at the base, so it can twitch and wiggle.
@@ -135,8 +188,9 @@ function head() {
   group.add(skull);
   const eyes = [eye(-1), eye(1)];
   const ears = [ear(-1), ear(1)];
-  group.add(...eyes, mouth(), ...ears);
-  return { group, eyes, ears };
+  const talking = talkingMouth();
+  group.add(...eyes, mouth(), talking.mesh, ...ears);
+  return { group, eyes, ears, mouth: talking };
 }
 
 // ---- body ----
@@ -228,6 +282,7 @@ export function buildAvatar() {
   root.add(body.group, ...legs);
   const figure = {
     root, torso: body.group, head: body.head.group, eyes: body.head.eyes, ears: body.head.ears, arms: body.arms, legs,
+    openMouth: body.head.mouth.open,
   };
   // The soft parts follow the body on springs: the tail sways and wags harder when it is happy, the ears flop a
   // little after a hop, and the belly squashes on landing.

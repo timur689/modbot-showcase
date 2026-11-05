@@ -1,116 +1,147 @@
-// Real aquarium plants, lit from the lamp above (dark at the root, bright at the tips, a pale midrib catching the
-// light): vallisneria ribbons and stem plants at the back, ferns, sword plants and a carpet of grass in front;
-// duckweed floating at the top and specks drifting in the water.
+// Real aquarium plants, lit from the lamp above (dark at the root, bright at the tips, a pale fold along the midrib):
+// vallisneria ribbons and stem plants at the back, ferns and sword plants in the middle, a carpet of grass along the
+// front glass, all swaying in the current; duckweed floating at the top and specks drifting in the water.
 
-import { art, gradient, make, pick, rand, round } from "./svgkit.js";
+import { SURFACE } from "./world.js";
+import { THREE, color, curve, floorAt, leafy, merge, paint, pick, rand, ribbon, solid, swayByHeight, swaying, tube } from "./kit.js";
 
-const sway = (svg, front) => {
-  svg.style.setProperty("--sway", `${round(rand(3.5, 6.5))}s`);
-  svg.style.setProperty("--delay", `${-round(rand(0, 6))}s`);
-  if (front) svg.classList.add("front");
-  return svg;
-};
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const across = (dir) => V(-dir.z, 0, dir.x).normalize(); // horizontal, at a right angle to `dir`
+const heading = (angle) => V(Math.cos(angle), 0, Math.sin(angle));
 
-// A long ribbon leaf from (x, h) up to its tip, tapering and bending as it goes.
-const ribbon = (x, h, top, width, bend) =>
-  `M${round(x - width)} ${h} C${round(x - width + bend)} ${round(h * 0.6)} ${round(x + bend * 1.4)} ${round(top + 30)} ${round(x + bend)} ${round(top)} ` +
-  `C${round(x + bend * 1.2 + 2)} ${round(top + 30)} ${round(x + width + bend * 0.8)} ${round(h * 0.6)} ${round(x + width)} ${h} Z`;
-const midrib = (x, h, top, bend) => `M${round(x)} ${h} C${round(x + bend)} ${round(h * 0.6)} ${round(x + bend * 1.3)} ${round(top + 30)} ${round(x + bend)} ${round(top + 4)}`;
-
-export const PLANTS = {
-  vallisneria(left, height) {
-    const svg = art("plant", 50, 160, `left:${left}%; width:${round(rand(34, 48))}px; height:${round(height)}px`);
-    const fill = gradient(svg, [[0, "#1f5f30"], [0.55, "#4fa64a"], [1, "#a6e07a"]]);
-    for (let k = 0; k < 7; k += 1) {
-      const x = rand(14, 36), top = rand(4, 60), bend = rand(-16, 16);
-      svg.append(
-        make("path", { d: ribbon(x, 160, top, rand(1.6, 2.8), bend), fill, opacity: round(rand(0.75, 1)) }),
-        make("path", { d: midrib(x, 160, top, bend), stroke: "#e8ffd0", "stroke-opacity": 0.28, "stroke-width": 0.5, fill: "none" }),
-      );
-    }
-    return sway(svg, false);
-  },
-  stem(left, height) {
-    const svg = art("plant", 40, 160, `left:${left}%; width:${round(rand(26, 34))}px; height:${round(height)}px`);
-    const leaf = gradient(svg, [[0, "#2f8a3e"], [1, "#9ad86a"]], { x1: 0, y1: 0, x2: 1, y2: 0 });
-    for (let s = 0; s < 2; s += 1) {
-      const x = rand(12, 28), top = rand(10, 40);
-      svg.append(make("path", { d: `M${round(x)} 160 Q${round(x + rand(-6, 6))} 90 ${round(x + rand(-4, 4))} ${round(top)}`, stroke: "#2b6e36", "stroke-width": 1.6, fill: "none" }));
-      for (let y = 150; y > top; y -= 11) { // pairs of small leaves up the stem, smaller and brighter towards the top
-        const size = 4 + ((y - top) / 150) * 3;
-        svg.append(
-          make("ellipse", { cx: round(x - size), cy: y, rx: round(size), ry: 2.1, fill: leaf, transform: `rotate(-24 ${round(x - size)} ${y})` }),
-          make("ellipse", { cx: round(x + size), cy: y - 3, rx: round(size), ry: 2.1, fill: leaf, transform: `rotate(24 ${round(x + size)} ${y - 3})` }),
-        );
-      }
-      svg.append(make("circle", { cx: round(x), cy: round(top), r: 2.4, fill: "#b8ec84" })); // the bright new crown
-    }
-    return sway(svg, false);
-  },
-  sword(left) {
-    const svg = art("plant front", 60, 70, `left:${left}%; width:40px; height:${round(rand(38, 48))}px`);
-    const fill = gradient(svg, [[0, "#246b30"], [0.6, "#4fa64a"], [1, "#94d870"]]);
-    [-62, -38, -14, 10, 34, 58].forEach((angle) => {
-      const turn = `rotate(${angle} 30 70)`;
-      svg.append(
-        make("path", { d: "M30 70 C18 48 20 18 30 4 C40 18 42 48 30 70 Z", fill, transform: turn }),
-        make("path", { d: "M30 68 L30 10 M30 50 L24 40 M30 50 L36 40 M30 34 L25 26 M30 34 L35 26", stroke: "#e8ffd0", "stroke-opacity": 0.35, "stroke-width": 0.7, fill: "none", transform: turn }),
-      );
-    });
-    return sway(svg, true);
-  },
-  fern(left) {
-    const svg = art("plant", 50, 80, `left:${left}%; width:44px; height:${round(rand(56, 72))}px`);
-    const fill = gradient(svg, [[0, "#173f22"], [1, "#4f9a4a"]]);
-    [-40, -18, 6, 28].forEach((angle) => svg.append(
-      make("path", { d: "M25 80 C14 60 12 34 22 8 C26 20 22 28 28 34 C24 44 34 52 26 62 C32 70 28 76 25 80 Z", fill, transform: `rotate(${angle} 25 80)` }),
-      make("path", { d: "M25 78 C22 60 20 36 22 12", stroke: "#bfe8a0", "stroke-opacity": 0.3, "stroke-width": 0.6, fill: "none", transform: `rotate(${angle} 25 80)` }),
-    ));
-    return sway(svg, false);
-  },
-  carpet(left) {
-    const svg = art("plant front carpet", 60, 22, `left:${left}%; width:${round(rand(46, 70))}px; height:${round(rand(14, 20))}px`);
-    for (let k = 0; k < 20; k += 1) {
-      const x = rand(2, 58), h = rand(6, 20);
-      svg.append(make("path", {
-        d: `M${round(x)} 22 Q${round(x + rand(-3, 3))} ${round(22 - h / 2)} ${round(x + rand(-4, 4))} ${round(22 - h)}`,
-        stroke: pick(["#5cc36f", "#78c850", "#4bb07a", "#9ad86a"]), "stroke-width": 1.6, fill: "none",
-      }));
-    }
-    return sway(svg, true);
-  },
-};
-
-// The planted garden: a back row of tall plants, ferns, two sword plants and a carpet along the front glass.
-export function growPlants(tank) {
-  for (let left = -3; left < 100; left += rand(7, 12)) {
-    tank.append(PLANTS[Math.random() < 0.7 ? "vallisneria" : "stem"](left, rand(110, 200)));
-  }
-  [rand(14, 20), rand(78, 86)].forEach((left) => tank.append(PLANTS.fern(left)));
-  [rand(24, 28), rand(88, 92)].forEach((left) => tank.append(PLANTS.sword(left)));
-  for (let left = -2; left < 100; left += rand(11, 18)) tank.append(PLANTS.carpet(left));
+// One plant: its leaves merged into one swaying mesh standing at (x, z) on the bottom.
+function standing(parts, x, z, reach, height) {
+  const geometry = swayByHeight(merge(parts), 0, height);
+  const mesh = swaying(solid(geometry, leafy()), reach);
+  mesh.position.set(x, floorAt(x, z) - 0.05, z);
+  return mesh;
 }
 
-// Duckweed: clusters of little round leaves at the surface with roots hanging down; specks drifting in the light.
-export function growFloaters(tank) {
-  [8, 30, 70].forEach((left) => {
-    const svg = art("duckweed", 30, 40, `left:${round(left + rand(0, 6))}%; animation-delay:${-round(rand(0, 9))}s`);
-    const fill = gradient(svg, [[0, "#4fae4a"], [1, "#a8e884"]], { cx: 0.4, cy: 0.35 });
-    for (let k = 0; k < 5; k += 1) {
-      const x = 4 + k * 5.4 + rand(-1, 1), r = rand(2.6, 3.8);
-      svg.append(
-        make("path", { d: `M${round(x)} ${round(4 + r * 0.2)} q${round(rand(-2, 2))} 12 0 ${round(rand(14, 30))}`, stroke: "#e6ffe0", "stroke-opacity": 0.55, "stroke-width": 0.7, fill: "none" }),
-        make("ellipse", { cx: round(x), cy: 4, rx: round(r), ry: round(r * 0.55), fill }),
-        make("ellipse", { cx: round(x - r * 0.3), cy: 3.3, rx: round(r * 0.35), ry: 0.6, fill: "#fff", opacity: 0.55 }),
-      );
+export const PLANTS = {
+  vallisneria(x, z, height, tones = ["#1f5f30", "#a6e07a"]) {
+    const leaves = Array.from({ length: 8 }, () => {
+      const dir = heading(rand(0, Math.PI * 2)), bend = rand(0.2, 1.1), top = height * rand(0.6, 1);
+      const root = V(rand(-0.22, 0.22), 0, rand(-0.12, 0.12));
+      const points = curve(root, root.clone().addScaledVector(dir, bend * 0.2).setY(top * 0.55), root.clone().addScaledVector(dir, bend).setY(top), 20);
+      const width = rand(0.07, 0.11);
+      return ribbon(points, (s) => width * (1 - 0.3 * s) * Math.min(1, (1 - s) * 8 + 0.05), across(dir), { twist: rand(-1.6, 1.6), root: color(tones[0]), tip: color(tones[1]) });
+    });
+    return standing(leaves, x, z, 0.38, height);
+  },
+  stem(x, z, height) {
+    const parts = [];
+    for (let k = 0; k < 2; k += 1) {
+      const top = height * rand(0.55, 0.9), lean = V(rand(-0.3, 0.3), 0, rand(-0.15, 0.15));
+      const base = V(rand(-0.15, 0.15), 0, rand(-0.1, 0.1));
+      const stem = curve(base, base.clone().addScaledVector(lean, 0.4).setY(top * 0.5), base.clone().add(lean).setY(top), 16);
+      parts.push(paint(tube(stem, () => 0.022, 6), color("#2b6e36")));
+      for (let i = 1; i < stem.length; i += 1) { // pairs of small leaves, each pair turned a quarter from the last
+        const at = stem[i], size = 1.4 + (1 - i / stem.length) * 0.8;
+        [0, Math.PI].forEach((half) => {
+          const dir = heading(i * 1.57 + half).add(V(0, 0.35, 0)).normalize();
+          const leaf = curve(at, at.clone().addScaledVector(dir, 0.1 * size).add(V(0, 0.03, 0)), at.clone().addScaledVector(dir, 0.2 * size).add(V(0, 0.01, 0)), 6);
+          parts.push(ribbon(leaf, (s) => 0.1 * size * Math.sin(Math.PI * s) ** 0.7 + 0.005, across(dir), { root: color("#2f8a3e"), tip: color("#9ad86a") }));
+        });
+      }
+      const crown = new THREE.IcosahedronGeometry(0.06, 1);
+      crown.translate(stem.at(-1).x, stem.at(-1).y, stem.at(-1).z);
+      parts.push(paint(crown, color("#b8ec84")));
     }
-    tank.append(svg);
-  });
-  for (let k = 0; k < 18; k += 1) {
-    const speck = document.createElement("span");
-    const size = round(rand(1.5, 3.4));
-    speck.className = "speck grown";
-    speck.style.cssText = `left:${round(rand(0, 90))}%; top:${round(rand(40, 210))}px; width:${size}px; height:${size}px; --t:${round(rand(10, 20))}s; --d:${-round(rand(0, 20))}s`;
-    tank.append(speck);
+    return standing(parts, x, z, 0.3, height);
+  },
+  sword(x, z) {
+    const size = rand(0.85, 1.1);
+    const leaves = Array.from({ length: 9 }, (_, k) => {
+      const dir = heading((k / 9) * Math.PI * 2 + rand(-0.2, 0.2)), rise = rand(0.7, 1.05) * size;
+      const points = curve(V(0, 0, 0), dir.clone().multiplyScalar(0.12 * size).setY(rise * 0.55), dir.clone().multiplyScalar(0.55 * size).setY(rise), 16);
+      return ribbon(points, (s) => (s < 0.3 ? 0.03 : 0.28 * size * Math.sin((Math.PI * (s - 0.3)) / 0.7) ** 0.8 + 0.02), across(dir), { twist: rand(-0.4, 0.4), fold: 0.25, root: color("#246b30"), tip: color("#94d870") });
+    });
+    return standing(leaves, x, z, 0.1, 1.1);
+  },
+  fern(x, z) {
+    const leaves = Array.from({ length: 7 }, (_, k) => {
+      const dir = heading((k / 7) * Math.PI * 2 + rand(-0.3, 0.3)), length = rand(0.9, 1.3);
+      const points = curve(V(0, 0, 0), dir.clone().multiplyScalar(0.2).setY(length * 0.85), dir.clone().multiplyScalar(length * 0.55).setY(length * 0.9), 18);
+      return ribbon(points, (s) => 0.22 * Math.sin(Math.PI * s) ** 0.7 * (1 + 0.14 * Math.sin(s * 30)) + 0.01, across(dir), { twist: rand(-0.5, 0.5), fold: 0.3, root: color("#173f22"), tip: color("#4f9a4a") });
+    });
+    return standing(leaves, x, z, 0.16, 1.3);
+  },
+  carpet(x, z, width) {
+    const blades = Array.from({ length: 80 }, () => {
+      const root = V(rand(-width / 2, width / 2), 0, rand(-0.3, 0.3)), dir = heading(rand(0, Math.PI * 2)), h = rand(0.12, 0.32);
+      const points = curve(root, root.clone().addScaledVector(dir, 0.03).setY(h * 0.6), root.clone().addScaledVector(dir, rand(0.04, 0.12)).setY(h), 5);
+      const tone = pick(["#5cc36f", "#78c850", "#4bb07a", "#9ad86a"]);
+      return ribbon(points, (s) => 0.035 * (1 - s) + 0.004, across(dir), { root: color("#2c7a3a"), tip: color(tone) });
+    });
+    return standing(blades, x, z, 0.08, 0.35);
+  },
+};
+
+// The planted garden: a hazy far row, a back row of tall plants, ferns, two sword plants and a carpet in front.
+export function growPlants(world) {
+  const garden = new THREE.Group();
+  for (let x = -6.5; x < 6.5; x += rand(1.1, 1.8)) garden.add(PLANTS.vallisneria(x, rand(-4.4, -3.6), rand(4, 6), ["#1d4a3a", "#5d9a72"]));
+  for (let x = -6; x < 6; x += rand(0.7, 1.15)) {
+    const z = rand(-2.9, -2.2), height = rand(3, 5.2);
+    garden.add(Math.random() < 0.7 ? PLANTS.vallisneria(x, z, height) : PLANTS.stem(x, z, height));
   }
+  [[rand(-3.4, -3), -1.3], [rand(3.4, 3.8), -1.1]].forEach(([x, z]) => garden.add(PLANTS.fern(x, z)));
+  [[rand(-1.9, -1.6), 0.7], [rand(3.5, 3.8), 1.3]].forEach(([x, z]) => garden.add(PLANTS.sword(x, z)));
+  for (let x = -5.6; x < 5.8; x += rand(1.1, 1.6)) garden.add(PLANTS.carpet(x, rand(1.9, 2.3), rand(0.8, 1.3)));
+  world.add(garden);
+  return garden;
+}
+
+// Duckweed at the surface: clusters of round leaves with roots hanging down, drifting.
+function duckweed(world) {
+  [[-3.4, -0.6], [-1, 0.3], [2.3, -0.9]].forEach(([x, z], k) => {
+    const cluster = new THREE.Group();
+    const leaf = new THREE.MeshStandardMaterial({ color: "#6fbf4f", roughness: 0.5 });
+    const roots = [];
+    for (let i = 0; i < 6; i += 1) {
+      const r = rand(0.07, 0.11), at = V(i * 0.13 + rand(-0.04, 0.04), 0, rand(-0.1, 0.1));
+      const pad = solid(new THREE.CylinderGeometry(r, r * 0.9, 0.02, 14), leaf, { receive: false });
+      pad.position.copy(at);
+      cluster.add(pad);
+      roots.push(at.x, 0, at.z, at.x + rand(-0.03, 0.03), -rand(0.25, 0.65), at.z);
+    }
+    const lines = new THREE.BufferGeometry();
+    lines.setAttribute("position", new THREE.Float32BufferAttribute(roots, 3));
+    cluster.add(new THREE.LineSegments(lines, new THREE.LineBasicMaterial({ color: "#e6ffe0", transparent: true, opacity: 0.5 })));
+    cluster.position.set(x, SURFACE - 0.06, z);
+    world.add(cluster);
+    world.every((t) => {
+      cluster.position.x = x + Math.sin(t * 0.35 + k * 2) * 0.35;
+      cluster.rotation.y = Math.sin(t * 0.2 + k) * 0.4;
+    });
+  });
+}
+
+// Specks drifting in the light; at night they glow.
+function specks(world) {
+  const count = 46;
+  const start = Array.from({ length: count }, () => [rand(-5, 5), rand(0.6, 6.4), rand(-2.5, 1.6), rand(0.05, 0.16)]);
+  const geometry = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  const material = new THREE.PointsMaterial({ size: 0.05, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: "#fff0cc" });
+  const dust = new THREE.Points(geometry, material);
+  dust.frustumCulled = false;
+  world.add(dust);
+  const day = color("#fff0cc"), night = color("#7ff0ff");
+  world.every((t) => {
+    start.forEach(([x, y, z, speed], i) => {
+      const run = (t * speed + i * 0.37) % 1;
+      positions.set([x + run * 1.6, y + run * 1.1 + Math.sin(t + i) * 0.05, z], i * 3);
+    });
+    geometry.attributes.position.needsUpdate = true;
+    material.color.copy(day).lerp(night, world.light.night);
+    material.opacity = 0.45 + 0.5 * world.light.night;
+    material.size = 0.045 + 0.03 * world.light.night;
+  });
+}
+
+export function growFloaters(world) {
+  duckweed(world);
+  specks(world);
 }

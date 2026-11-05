@@ -186,11 +186,12 @@
         }
       }
 
-      // The aquarium (aquarium/): its inhabitants, the lamp's light and shadows, the visitor's settings.
+      // The aquarium (aquarium/): a 3D world with its inhabitants, the lamp's light and shadows, the visitor's settings.
+      let aquarium = null;
       async function fillTank() {
         try {
           const { buildAquarium } = await import("./aquarium/main.js");
-          buildAquarium(document.querySelector(".scene"), document.getElementById("tune"));
+          aquarium = buildAquarium(document.querySelector(".scene"), document.getElementById("tune"));
         } catch (error) {
           console.warn("showcase: no aquarium", error); // the empty tank and the words still show
         }
@@ -205,11 +206,10 @@
           const cat = createAvatar(box);
           cat.wear("snorkel");
           setInterval(() => {
-            const fish = document.querySelector(".fish.f1"); // the aquarium may still be filling
-            if (!fish) return;
-            const at = fish.getBoundingClientRect(), me = box.getBoundingClientRect();
-            const x = (at.left + at.width / 2 - (me.left + me.width / 2)) / (window.innerWidth / 2);
-            const y = (at.top + at.height / 2 - (me.top + me.height * 0.3)) / (window.innerHeight / 2);
+            if (!aquarium) return; // the aquarium may still be filling
+            const at = aquarium.clownOnScreen(), me = box.getBoundingClientRect();
+            const x = (at.x - (me.left + me.width / 2)) / (window.innerWidth / 2);
+            const y = (at.y - (me.top + me.height * 0.3)) / (window.innerHeight / 2);
             cat.look(Math.max(-1, Math.min(1, x)), Math.max(-1, Math.min(1, y)));
           }, 200);
           setInterval(() => (Math.random() < 0.5 ? cat.frolic() : cat.react("happy")), 9000);

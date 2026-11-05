@@ -40,7 +40,7 @@ function mark(group, value) {
   });
 }
 
-export function setUpTuning(scene, panel, { onGround, onReshuffle }) {
+export function setUpTuning(scene, panel, { onLight, onGround, onReshuffle }) {
   let state = load();
   const groups = [...panel.querySelectorAll("[data-key]")];
   const apply = () => {
@@ -54,6 +54,7 @@ export function setUpTuning(scene, panel, { onGround, onReshuffle }) {
     apply();
     save(state);
     haptic();
+    if (key === "light") onLight(value);
     if (key === "ground") onGround(value);
   };
 
@@ -80,5 +81,5 @@ export function setUpTuning(scene, panel, { onGround, onReshuffle }) {
 
   apply();
   panel.hidden = false;
-  return { ground: () => state.ground };
+  return { light: () => state.light, ground: () => state.ground };
 }

@@ -6,6 +6,7 @@ export const IDLE = {
   x: 0, y: 0, yaw: 0, roll: 0, lean: 0, sway: 0, scale: 1,
   headYaw: 0, headPitch: 0, headRoll: 0,
   armL: 0.03, armR: 0.03, armFwdL: 0.03, armFwdR: 0.03, // armFwd: positive swings the arm back, negative forward
+  armLenL: 1, armLenR: 1, armOutL: 0, armOutR: 0, // a big wave: the arm stretches and its shoulder slides out from under the head
   legL: 0, legR: 0, wind: 1, ears: 0, earsBend: 0,
   squint: 0, earFlap: 0, // squint: happy eyes narrowing to arcs; earFlap: how hard the ears wiggle
 };
@@ -138,6 +139,21 @@ export const REACTIONS = {
   shoot: { name: "shoot", seconds: 1.1, pose(t, p) { // shoots a web straight at the owner: paw thrust out, a little recoil
     const thrust = p < 0.25 ? Math.sin((p / 0.25) * Math.PI * 0.5) : Math.max(0, 1 - (p - 0.25) / 0.75);
     return { armR: 0.1 + thrust * 0.5, armFwdR: -thrust * 1.6, lean: -thrust * 0.1, headPitch: -thrust * 0.05, squint: thrust * 0.7, earFlap: thrust * 0.5 };
+  } },
+  hello: { name: "hello", seconds: 3.2, pose(t, p) { // the big hello: a bounce, then an eager wave with the whole arm
+    const up = Math.sin(Math.min(1, p * 1.15) * Math.PI), hop = p < 0.25 ? Math.sin((p / 0.25) * Math.PI) : 0, wag = Math.sin(t * 11) * up;
+    return {
+      y: hop * 0.14, lean: -hop * 0.06, sway: wag * 0.02, armR: 0.1 + up * 2.0 + wag * 0.35, armFwdR: -up * 0.45 + wag * 0.15,
+      armLenR: 1 + up * 0.7, armOutR: up * 0.3, armL: 0.1 + up * 0.35, headRoll: wag * 0.09, headPitch: -up * 0.06,
+      squint: up * 0.8, earFlap: Math.max(hop, up * 0.5),
+    };
+  } },
+  cheer: { name: "cheer", seconds: 1.8, pose(t, p) { // both paws up, waving side to side, bouncing: «пока!»
+    const up = Math.sin(Math.min(1, p * 1.1) * Math.PI), wag = Math.sin(t * 9) * up, hop = Math.abs(Math.sin(p * Math.PI * 3)) * up;
+    return {
+      y: hop * 0.08, armL: 0.1 + up * 2.0 - wag * 0.35, armR: 0.1 + up * 2.0 + wag * 0.35, armFwdL: -up * 0.4, armFwdR: -up * 0.4,
+      armLenL: 1 + up * 0.7, armLenR: 1 + up * 0.7, armOutL: up * 0.3, armOutR: up * 0.3, headRoll: wag * 0.08, squint: up, earFlap: up,
+    };
   } },
   explain: { name: "explain", seconds: 2.6, pose(t, p) { // tapped: turns to the owner and explains, one hand open, nodding
     const open = Math.sin(Math.min(1, p * 1.1) * Math.PI), talk = Math.sin(t * 7) * open;

@@ -18,6 +18,7 @@ const MAX_STRETCH = 0.12;
 const DOUBLE_BLINK = 0.25; // how often a blink comes twice
 const CONTACT_SHADOW = 0.32; // the blot under its feet, standing on the ground
 const FLOOR_SHADOW = 0.16; // the shadow its whole body casts from the light above
+const MOUTH_OPEN_SPEED = 30, MOUTH_CLOSE_SPEED = 9; // per second: it opens with the voice at once and shuts a little slower
 
 // ---- motion ----
 
@@ -69,6 +70,11 @@ function apply(figure, pose, t, look, swing) {
   const [armL, armR] = figure.arms;
   armL.rotation.set(pose.armFwdL, 0, -pose.armL - Math.sin(t * 1.9) * 0.015);
   armR.rotation.set(pose.armFwdR, 0, pose.armR + Math.sin(t * 1.9) * 0.015);
+  [[armL, -1, pose.armOutL, pose.armLenL], [armR, 1, pose.armOutR, pose.armLenR]].forEach(([arm, side, out, length]) => {
+    if (arm.userData.restX === undefined) arm.userData.restX = arm.position.x;
+    arm.position.x = arm.userData.restX + side * out;
+    arm.scale.set(1, length, 1);
+  });
   const [legL, legR] = figure.legs;
   legL.rotation.x = pose.legL;
   legR.rotation.x = pose.legR;
@@ -80,13 +86,15 @@ function apply(figure, pose, t, look, swing) {
   });
 }
 
-export function createAvatar(container) {
+// size: how many times bigger than usual the canvas is drawn (the full-screen greeting draws it huge, and sharp);
+// maxPixelRatio caps the device pixel ratio, so a huge canvas stays light enough for a phone.
+export function createAvatar(container, { size = 1, maxPixelRatio = 2 } = {}) {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setSize(WIDTH, HEIGHT, false);
-  renderer.domElement.style.width = `${WIDTH}px`;
-  renderer.domElement.style.height = `${HEIGHT}px`;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxPixelRatio));
+  renderer.setSize(WIDTH * size, HEIGHT * size, false);
+  renderer.domElement.style.width = `${WIDTH * size}px`;
+  renderer.domElement.style.height = `${HEIGHT * size}px`;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.shadowMap.enabled = true;
@@ -126,6 +134,7 @@ export function createAvatar(container) {
     springs: Array.from({ length: 6 }, () => ({ a: 0, v: 0 })), lastY: 0, lastRoll: 0, lastYaw: 0,
   };
   const state = { move: null, kind: null, nextDance: 0, lastPlay: -1, nextAction: ACTION_EVERY[0], blinkAt: 2, running: false, last: 0, air: 0 };
+  const mouth = { open: 0, target: 0 }; // talking: how far the mouth is open, 0 shut to 1 wide
   const walk = { target: 0, weight: 0, facing: 0, phase: 0, bounce: 0, skip: 0, pace: 1, speed: 1 }; // target: -1 walks left, 1 right, 0 stands
   const clock = new THREE.Clock();
 
@@ -186,6 +195,16 @@ export function createAvatar(container) {
     walk.phase += dt * Math.PI * STEPS_PER_SECOND * walk.weight * (1 + walk.skip * 0.25) * walk.speed;
   }
 
+  // The mouth follows the voice without jumping: it opens at once on a syllable and shuts a little slower, so it
+  // does not flicker between syllables.
+  function moveMouth(dt) {
+    if (!figure.openMouth) return; // a body without a talking mouth
+    const speed = mouth.target > mouth.open ? MOUTH_OPEN_SPEED : MOUTH_CLOSE_SPEED;
+    const was = mouth.open;
+    mouth.open += (mouth.target - mouth.open) * Math.min(1, dt * speed);
+    if (mouth.open > 0.005 || was > 0.005) figure.openMouth(mouth.open);
+  }
+
   function frame() {
     if (!renderer.domElement.isConnected) { state.running = false; return; }
     const t = clock.getElapsedTime(), dt = t - state.last;
@@ -212,8 +231,9 @@ export function createAvatar(container) {
     placeShadows(contact, floor, figure.root, state.air);
     physics(t, dt);
     blink(t, pose.squint);
+    moveMouth(dt);
     renderer.render(scene, camera);
-    if (reduced && !state.move && t > 1.4) { state.running = false; return; }
+    if (reduced && !state.move && t > 1.4 && !mouth.target && mouth.open < 0.01) { state.running = false; return; }
     requestAnimationFrame(frame);
   }
 
@@ -227,6 +247,14 @@ export function createAvatar(container) {
   resume();
   return {
     resume,
+    // Takes the cat off the page and gives its WebGL context back (after the browser took it away, say).
+    dispose() {
+      state.running = false;
+      renderer.domElement.remove();
+      renderer.dispose();
+    },
+    // Talking: how loud the voice is right now, 0 (mouth shut) to 1 (wide open).
+    talk(level) { mouth.target = Math.max(0, Math.min(1, level)); resume(); },
     look(x, y) { look.at = clock.getElapsedTime(); look.x = x; look.y = y; },
     // Walks on the spot, facing left (-1) or right (1); 0 stops and turns back to the owner. The panel moves it.
     // bounce 1 skips along happily instead of walking.
